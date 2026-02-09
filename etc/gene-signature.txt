@@ -1,0 +1,22 @@
+SYMBOL	Category
+CA9	Hypoxia/Acidosis
+VEGFA	Hypoxia/Acidosis
+CA12	Hypoxia/Acidosis
+BGN	CSPG Core
+CSPG4	CSPG Core
+VCAN	CSPG Core
+NCAN	CSPG Core
+CHPF	CS GAG Synthesis
+CSGALNACT1	CS GAG Synthesis
+CHSY1	CS GAG Synthesis
+UST	CS GAG Synthesis
+SULF2	ECM Organization
+COL6A1	ECM Organization
+FN1	ECM Organization
+THBS4	ECM Organization
+GPC4	ECM Organization
+FASN	Lipid Metabolism
+PPARD	Lipid Metabolism
+PPARGC1A	Lipid Metabolism
+HILPDA	Lipid Metabolism
+VLDLR	Lipid Metabolism
