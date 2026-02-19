@@ -1,0 +1,178 @@
+---
+title: "Microarray Data Preprocessing"
+author: "beltingSeq Package"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Microarray Data Preprocessing}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+## Introduction
+
+This vignette demonstrates how to use **beltingSeq** to preprocess microarray data from Affymetrix and Illumina platforms. The workflow includes normalization, annotation, and differential expression analysis.
+
+## Loading the Package
+
+```{r load-package}
+library(beltingSeq)
+library(dplyr)
+```
+
+## Affymetrix Data Processing
+
+### 1. Read CEL files
+
+```{r affymetrix-read, eval=FALSE}
+# Read Affymetrix CEL files
+library(oligo)
+data_dir <- "path/to/cel/files"
+cel_data <- read.celfiles(list.celfiles(data_dir, full.names = TRUE))
+```
+
+### 2. Normalize with RMA
+
+The `normalizeTranscript()` function performs RMA normalization, which includes:
+- Background correction
+- Log2 transformation
+- Quantile normalization
+- Gene annotation
+
+```{r affymetrix-normalize, eval=FALSE}
+# Normalize and annotate
+library(clariomdhumantranscriptcluster.db)
+normalized_data <- normalizeTranscript(cel_data, clariomdhumantranscriptcluster.db)
+head(normalized_data[, 1:5])
+```
+
+### 3. Calculate fold changes
+
+```{r affymetrix-fc, eval=FALSE}
+# Calculate log2 fold change between conditions
+normalized_data$log2FoldChange <- 
+  normalized_data$Treatment_sample - normalized_data$Control_sample
+```
+
+### 4. Remove duplicate probes
+
+Multiple probes may map to the same gene. Keep the probe with the highest absolute fold change:
+
+```{r affymetrix-duplicates, eval=FALSE}
+unique_data <- removeDuplicates(
+  .data = normalized_data,
+  .column = "log2FoldChange",
+  .symbol = "SYMBOL"
+)
+```
+
+## Illumina BeadChip Processing
+
+### 1. Read Illumina data
+
+```{r illumina-read, eval=FALSE}
+library(limma)
+# Read target file and expression data
+targets <- readTargets("targets.txt")
+x <- read.ilmn(files = "probe_profile.txt", 
+               ctrlfiles = "control_probe.txt")
+```
+
+### 2. Normalize with neqc
+
+```{r illumina-normalize, eval=FALSE}
+library(illuminaHumanv4.db)
+# Create database connection for gene symbol aliases
+dbconn <- ... # Your database connection
+
+normalized_data <- normalizeIllumina(
+  .df = x,
+  .dbconn = dbconn,
+  .samples = colnames(x$E)
+)
+```
+
+## Differential Expression Analysis
+
+Use limma to identify differentially expressed genes:
+
+```{r dea, eval=FALSE}
+# Define experimental design
+design <- c("control", "control", "control",
+            "treatment", "treatment", "treatment")
+
+# Define contrasts
+contrasts <- c("treatment-control")
+
+# Perform differential expression analysis
+deg_results <- limmaDEA(
+  .data = normalized_data,
+  .design = design,
+  .contrast = contrasts
+)
+
+# First contrast results
+deg_df <- deg_results[[1]]
+```
+
+## Add Significance Classification
+
+```{r significance, eval=FALSE}
+# Classify genes by significance
+deg_df <- deg_df %>%
+  dplyr::rename(
+    Symbol = ID.Symbol,
+    log2FoldChange = logFC,
+    padj = adj.P.Val
+  ) %>%
+  get_significance(fc_threshold = 0.5, padj_threshold = 0.05)
+
+# Count significant genes
+table(deg_df$significance)
+```
+
+## Visualize Results
+
+```{r volcano, eval=FALSE}
+# Create volcano plot
+volcano_plot <- plot_vulcan(deg_df, label = TRUE)
+volcano_plot
+
+# Save the plot
+ggsave("volcano_plot.png", volcano_plot, 
+       width = 8, height = 6, dpi = 300)
+```
+
+## Export Results
+
+```{r export, eval=FALSE}
+library(openxlsx)
+# Save to Excel
+write.xlsx(deg_df, file = "differential_expression_results.xlsx")
+```
+
+## Summary
+
+This vignette covered:
+1. Reading and normalizing microarray data (Affymetrix and Illumina)
+2. Removing duplicate probes
+3. Performing differential expression analysis with limma
+4. Classifying genes by significance
+5. Creating publication-ready visualizations
+
+For GSEA analysis and pathway enrichment, see the "GSEA Analysis" vignette.
+
+## Session Info
+
+```{r session-info}
+sessionInfo()
+```

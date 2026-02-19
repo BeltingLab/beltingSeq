@@ -1,0 +1,294 @@
+---
+title: "Creating Publication-Ready Visualizations"
+author: "beltingSeq Package"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Creating Publication-Ready Visualizations}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 6
+)
+```
+
+## Introduction
+
+This vignette demonstrates how to create publication-ready visualizations using **beltingSeq** including volcano plots, GSEA enrichment plots, network graphs, and statistical plots.
+
+## Loading Packages
+
+```{r load-packages, eval=FALSE}
+library(beltingSeq)
+library(ggplot2)
+library(ggrepel)
+library(cowplot)
+```
+
+## Volcano Plots
+
+### Basic volcano plot
+
+```{r volcano-basic, eval=FALSE}
+# Create volcano plot with default settings
+volcano <- plot_vulcan(deg_df, label = FALSE)
+volcano
+```
+
+### Volcano plot with gene labels
+
+```{r volcano-labeled, eval=FALSE}
+# Automatically labels significant genes
+volcano_labeled <- plot_vulcan(deg_df, label = TRUE)
+volcano_labeled
+```
+
+### Customized volcano plot
+
+```{r volcano-custom, eval=FALSE}
+# Highlight specific genes of interest
+genes_of_interest <- c("VEGFA", "HIF1A", "LDHA", "PDK1")
+
+volcano_custom <- plot_vulcan(deg_df, label = FALSE) +
+  geom_point(data = subset(deg_df, Symbol %in% genes_of_interest),
+             aes(x = log2FoldChange, y = -log10(padj)),
+             shape = 21, color = "black", fill = "black", 
+             size = 3, alpha = 0.8) +
+  geom_text_repel(data = subset(deg_df, Symbol %in% genes_of_interest),
+                  aes(x = log2FoldChange, y = -log10(padj), label = Symbol),
+                  size = 5, color = "black",
+                  box.padding = 0.3, point.padding = 0.5,
+                  max.overlaps = Inf) +
+  theme(panel.background = element_rect(fill = "white", color = "black"),
+        panel.border = element_rect(fill = "transparent", 
+                                   color = "black", linewidth = 1))
+
+ggsave("volcano_custom.png", volcano_custom, 
+       width = 8, height = 6, dpi = 300)
+```
+
+## GSEA Enrichment Plots
+
+### Single pathway enrichment
+
+```{r gsea-single, eval=FALSE}
+# Extract enrichment info for a specific pathway
+pathway_id <- 1  # Index of pathway in GSEA results
+enrich_info <- gsInfo(gsea_results$gsea, pathway_id)
+
+# Create enrichment plot
+p1 <- plotRunningScore(
+  .df = enrich_info,
+  .x = "x",
+  .y = "runningScore",
+  .color = "Description",
+  .palette = c("YOUR_PATHWAY" = "darkred")
+)
+
+p2 <- plotGeneRank(
+  .df = enrich_info,
+  .x = "x",
+  .facet = "Description~.",
+  .color = "Description",
+  .palette = c("YOUR_PATHWAY" = "darkred")
+)
+
+combined <- plot_grid(p1, p2, nrow = 2, rel_heights = c(1.2, 1))
+combined
+```
+
+### Multiple pathways comparison
+
+```{r gsea-multiple, eval=FALSE}
+# Compare enrichment across multiple conditions
+conditions <- c("condition1", "condition2", "condition3")
+pathway_id <- "HALLMARK_HYPOXIA"
+
+# Extract enrichment for each condition
+enrich_scores <- do.call(rbind, lapply(seq_along(conditions), function(i) {
+  gsInfo(gsea_results[[i]]$gsea, pathway_id) %>%
+    mutate(condition = conditions[i])
+}))
+
+# Plot
+p1 <- plotRunningScore(
+  .df = enrich_scores,
+  .x = "x",
+  .y = "runningScore",
+  .color = "condition",
+  .palette = c("condition1" = "blue", 
+               "condition2" = "red", 
+               "condition3" = "green")
+)
+
+p2 <- plotGeneRank(
+  .df = enrich_scores,
+  .x = "x",
+  .facet = "condition~.",
+  .color = "condition",
+  .palette = c("condition1" = "blue", 
+               "condition2" = "red", 
+               "condition3" = "green")
+)
+
+comparison_plot <- plot_grid(p1, p2, nrow = 2, rel_heights = c(1.2, 1))
+ggsave("gsea_comparison.png", comparison_plot, 
+       width = 10, height = 6, dpi = 300)
+```
+
+## Cluster Volcano Plots
+
+Visualize enriched pathway clusters:
+
+```{r cluster-volcano, eval=FALSE}
+# Define pathways of interest with categories
+pathways_of_interest <- data.frame(
+  ID = c("hsa04510", "R-HSA-1474244", "GO:0001525"),
+  Name = c("FOCAL_ADHESION", 
+           "EXTRACELLULAR_MATRIX_ORGANIZATION",
+           "ANGIOGENESIS"),
+  Category = c("ECM", "ECM", "HYPOXIA")
+)
+
+# Create cluster volcano plot
+cluster_plot <- plotClusters(
+  .df = gsea_results$sig_df,
+  .pathways = pathways_of_interest
+)
+
+ggsave("cluster_volcano.png", cluster_plot, 
+       width = 12, height = 5, dpi = 300)
+```
+
+## Network Graphs
+
+Visualize relationships between enriched pathways:
+
+```{r network, eval=FALSE}
+# Assuming you have clustered results from clustering vignette
+# Add cluster names
+cluster_names <- data.frame(
+  cluster = c(1, 2, 3),
+  Cluster_name = c("ECM Remodeling", "Hypoxia Response", "Metabolism"),
+  Interest = c(TRUE, TRUE, FALSE)
+)
+
+clustered$df <- clustered$df %>%
+  left_join(cluster_names, by = "cluster")
+
+# Create network layout
+layout <- layout_nicely(filtered_graph)
+
+# Plot network
+network_plot <- plot_network(
+  .net = filtered_graph,
+  .layout = layout,
+  .df = clustered$df,
+  .condition = "HYPOXIA"
+)
+
+ggsave("network_plot.png", network_plot, 
+       width = 20, height = 14, dpi = 300)
+```
+
+## Statistical Boxplots
+
+Compare scores between groups:
+
+```{r boxplot, eval=FALSE}
+# Example: Compare gene signature scores between subtypes
+# Assuming you have a data frame with scores and groups
+
+result <- score_plot(
+  .score = score_df,
+  .formula = "score~subtype",
+  .ref_group = "control",
+  .x = "subtype",
+  .y = "score",
+  .title = "Hypoxia Score",
+  number = TRUE  # Include n values in labels
+)
+
+# Extract plot and statistics
+result$plot
+result$stat.test
+
+ggsave("boxplot_scores.png", result$plot, 
+       width = 6, height = 5, dpi = 300)
+```
+
+## Multi-Panel Figures
+
+Combine multiple plots into publication figures:
+
+```{r multi-panel, eval=FALSE}
+# Create individual panels
+panel_a <- volcano_labeled + 
+  ggtitle("A") + 
+  theme(plot.title = element_text(face = "bold", size = 16))
+
+panel_b <- gsea_plot + 
+  ggtitle("B") + 
+  theme(plot.title = element_text(face = "bold", size = 16))
+
+panel_c <- result$plot + 
+  ggtitle("C") + 
+  theme(plot.title = element_text(face = "bold", size = 16))
+
+# Combine into multi-panel figure
+figure <- plot_grid(
+  panel_a, panel_b, panel_c,
+  ncol = 3,
+  rel_widths = c(1, 1, 0.8),
+  labels = NULL
+)
+
+ggsave("figure_1.png", figure, 
+       width = 15, height = 5, dpi = 300, bg = "white")
+```
+
+## Export Options
+
+### Save as PNG (for presentations)
+
+```{r export-png, eval=FALSE}
+ggsave("plot.png", plot,
+       width = 8, height = 6, dpi = 300, bg = "white")
+```
+
+### Save as SVG (for publications)
+
+```{r export-svg, eval=FALSE}
+ggsave("plot.svg", plot,
+       width = 8, height = 6, device = "svg", bg = "white")
+```
+
+### Save as PDF
+
+```{r export-pdf, eval=FALSE}
+ggsave("plot.pdf", plot,
+       width = 8, height = 6, device = "pdf", bg = "white")
+```
+
+## Summary
+
+This vignette covered:
+1. Creating volcano plots (basic and customized)
+2. GSEA enrichment plots (single and multiple pathways)
+3. Cluster volcano plots
+4. Network graphs of pathway relationships
+5. Statistical boxplots with testing
+6. Multi-panel figures
+7. Export options for different formats
+
+## Session Info
+
+```{r session-info}
+sessionInfo()
+```

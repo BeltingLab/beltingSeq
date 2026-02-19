@@ -1,0 +1,58 @@
+Package: beltingSeq
+Type: Package
+Title: Processing and Visualization Tools for Microarray and RNA-seq Data
+Version: 0.1.0
+Authors@R: person("Marton Horvath", "marton.horvath@med.lu.se", role = c("aut", "cre"),
+                  email = "marton.horvath@med.lu.se")
+Description: A comprehensive toolkit for processing, analyzing, and visualizing
+    microarray and RNA-seq data. Includes functions for data normalization,
+    differential expression analysis, gene set enrichment analysis (GSEA),
+    pathway clustering, and publication-ready visualizations.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.0
+Depends:
+    R (>= 4.0.0)
+Imports:
+    limma,
+    affycoretools,
+    oligo,
+    oligoClasses,
+    illuminaHumanv4.db,
+    clariomdhumantranscriptcluster.db,
+    clariomdhumanprobeset.db,
+    org.Hs.eg.db,
+    AnnotationDbi,
+    Biobase,
+    BiocGenerics,
+    clusterProfiler,
+    DOSE,
+    enrichplot,
+    msigdbr,
+    GSVA,
+    rrvgo,
+    ggplot2,
+    ggrepel,
+    ggpubr,
+    ggnewscale,
+    dplyr,
+    tidyr,
+    tibble,
+    stringr,
+    igraph,
+    cowplot,
+    openxlsx,
+    Hmisc
+Suggests:
+    TCGAbiolinks,
+    hacksig,
+    pheatmap,
+    ComplexHeatmap,
+    RColorBrewer,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+biocViews: GeneExpression, DifferentialExpression, GeneSetEnrichment,
+    Microarray, RNASeq, Visualization

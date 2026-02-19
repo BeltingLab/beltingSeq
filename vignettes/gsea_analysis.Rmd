@@ -1,0 +1,271 @@
+---
+title: "Gene Set Enrichment Analysis (GSEA)"
+author: "beltingSeq Package"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Gene Set Enrichment Analysis (GSEA)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 8,
+  fig.height = 6
+)
+```
+
+## Introduction
+
+This vignette demonstrates how to perform Gene Set Enrichment Analysis (GSEA) and pathway clustering using **beltingSeq**. We'll use MSigDB gene sets including KEGG, Reactome, GO, and Hallmark collections.
+
+## Loading Packages
+
+```{r load-packages, eval=FALSE}
+library(beltingSeq)
+library(msigdbr)
+library(dplyr)
+library(cowplot)
+```
+
+## Prepare Gene Sets from MSigDB
+
+### Load MSigDB database
+
+```{r load-msigdb, eval=FALSE}
+# Download human gene sets from MSigDB
+msigdbr_df <- msigdbr(species = "Homo sapiens")
+
+# Filter KEGG and Reactome pathways
+pathways <- msigdbr_df %>%
+  dplyr::filter(
+    gs_cat == "C2",
+    gs_subcat %in% c("CP:KEGG", "CP:REACTOME")
+  )
+
+# Filter Hallmark and GO biological process gene sets
+terms <- msigdbr_df %>%
+  dplyr::filter(
+    gs_cat == "H" |
+    (gs_cat == "C5" & gs_subcat == "GO:BP")
+  )
+
+# Standardize gene set labels
+terms <- terms %>%
+  dplyr::rowwise() %>%
+  dplyr::mutate(
+    gs_subcat = ifelse(gs_cat == "H", "HALLMARK", gs_subcat),
+    gs_exact_source = ifelse(gs_cat == "H", gs_id, gs_exact_source)
+  ) %>%
+  dplyr::ungroup()
+```
+
+## Prepare Gene Lists
+
+From your differential expression results:
+
+```{r prepare-genes, eval=FALSE}
+# Assuming deg_df has columns: Symbol, log2FoldChange, padj, entrezID
+
+# Create gene lists for GSEA
+gene_list <- get_genelist(
+  .df = deg_df,
+  .filter = deg_df$significance %in% c("Signif. up-regulated", 
+                                       "Signif. down-regulated"),
+  .value = "log2FoldChange",  # or "t" for t-statistic
+  .name = "entrezID"
+)
+
+# gene_list$background: all expressed genes (ranked)
+# gene_list$interest: only significant genes (ranked)
+```
+
+## Run GSEA
+
+### GSEA on GO terms
+
+```{r gsea-go, eval=FALSE}
+# Run GSEA
+go_results <- run_gsea(
+  .geneset = gene_list$background,
+  .terms = terms,
+  minGSSize = 10,
+  maxGSSize = 500
+)
+
+# Extract and format results
+go_results <- c(go_results, 
+                extract_gsea_results(go_results$gsea, terms))
+
+# View significant results
+head(go_results$sig_df)
+```
+
+### GSEA on KEGG and Reactome pathways
+
+```{r gsea-pathways, eval=FALSE}
+# Run GSEA
+pathway_results <- run_gsea(
+  .geneset = gene_list$background,
+  .terms = pathways
+)
+
+# Extract and format results
+pathway_results <- c(pathway_results,
+                     extract_gsea_results(pathway_results$gsea, pathways))
+
+# View top pathways
+head(pathway_results$sig_df)
+```
+
+## Visualize GSEA Results
+
+### Enrichment plot for specific pathways
+
+```{r enrichment-plot, eval=FALSE}
+# Define pathways to visualize
+selected_pathways <- c(
+  "EXTRACELLULAR_MATRIX_ORGANIZATION",
+  "GLYCOSAMINOGLYCAN_METABOLISM",
+  "PROTEOGLYCAN_METABOLIC_PROCESS"
+)
+
+# Define color palette
+palette <- c(
+  "EXTRACELLULAR_MATRIX_ORGANIZATION" = "#380186",
+  "GLYCOSAMINOGLYCAN_METABOLISM" = "#8D00FA",
+  "PROTEOGLYCAN_METABOLIC_PROCESS" = "#E70041"
+)
+
+# Find pathway indices
+pathway_ranks <- which(pathway_results$df$Name %in% names(palette))
+go_ranks <- which(go_results$df$Name %in% names(palette))
+
+# Extract running enrichment scores
+running_scores <- do.call(rbind, c(
+  lapply(pathway_ranks, gsInfo, object = pathway_results$gsea),
+  lapply(go_ranks, gsInfo, object = go_results$gsea)
+))
+
+# Clean up names
+running_scores$Description <- factor(
+  gsub(pattern = "REACTOME_|GOBP_", replacement = "", 
+       x = running_scores$Description),
+  levels = names(palette)
+)
+
+# Create plots
+p1 <- plotRunningScore(
+  .df = running_scores,
+  .x = "x",
+  .y = "runningScore",
+  .color = "Description",
+  .palette = palette
+)
+
+p2 <- plotGeneRank(
+  .df = running_scores,
+  .x = "x",
+  .facet = "Description~.",
+  .color = "Description",
+  .palette = palette
+)
+
+# Combine plots
+combined_plot <- cowplot::plot_grid(
+  p1, p2 + theme(strip.text.y.left = element_blank()),
+  byrow = TRUE, nrow = 2, ncol = 1, scale = 0.95,
+  rel_heights = c(1.2, 1), axis = "r"
+)
+
+# Save plot
+ggsave("gsea_enrichment_plot.png", combined_plot,
+       width = 6, height = 4.45, dpi = 300)
+```
+
+### Create summary table
+
+```{r summary-table, eval=FALSE}
+# Format enrichment table
+enrich_table <- getEnrichmentTable(
+  .df = rbind(pathway_results$df[pathway_ranks, ],
+              go_results$df[go_ranks, ]),
+  .order = "",
+  .name = "Name"
+)
+
+# Save table
+library(openxlsx)
+write.xlsx(enrich_table, rowNames = TRUE,
+           file = "enrichment_summary.xlsx")
+```
+
+## Over-Representation Analysis (ORA)
+
+As an alternative to GSEA, you can perform ORA:
+
+```{r ora, eval=FALSE}
+# Run ORA on significant genes only
+ora_results <- run_ora(
+  .interest = gene_list$interest,
+  .background = gene_list$background,
+  .pathways = pathways
+)
+
+# Extract results
+ora_results <- c(ora_results,
+                 extract_ora_results(ora_results$ora, pathways))
+
+# View significant pathways
+head(ora_results$sig_df)
+```
+
+## Cluster Related Pathways
+
+To identify groups of related enriched pathways:
+
+```{r clustering, eval=FALSE}
+# Calculate Cohen's Kappa similarity matrix
+# (This would typically be pre-computed and saved)
+genes_list <- split(
+  strsplit(go_results$sig_df$core_enrichment, "/"),
+  go_results$sig_df$ID
+)
+similarity_matrix <- cohen_kappa(genes_list)
+
+# Cluster pathways
+clustered <- get_cluster(
+  .df = go_results$sig_df,
+  .matrix = similarity_matrix,
+  .threshold = 0.25
+)
+
+# Get cluster representatives
+clustered$df <- get_cluster_representative(
+  .cluster = clustered$df,
+  .degs = deg_df
+)
+
+# Filter clusters by size (keep only clusters with >= 5 members)
+filtered_graph <- filter_graph(clustered$graph, threshold = 5)
+```
+
+## Summary
+
+This vignette covered:
+1. Preparing gene sets from MSigDB
+2. Running GSEA and ORA
+3. Visualizing enrichment results
+4. Creating publication-ready plots
+5. Clustering related pathways
+
+For network visualization of clustered pathways, see the "Visualization" vignette.
+
+## Session Info
+
+```{r session-info}
+sessionInfo()
+```

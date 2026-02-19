@@ -1,0 +1,32 @@
+# .Rbuildignore - Files to exclude from R package build
+
+^.*\.Rproj$
+^\.Rproj\.user$
+^LICENSE\.md$
+^README\.md$
+^REORGANIZATION_GUIDE\.md$
+^README_PACKAGE\.md$
+
+# Original project files (keep for reference but exclude from package)
+^bin/packages\.R$
+^bin/1-preprocessing\.R$
+^bin/2-GSEA-analysis\.R$
+^bin/3-cluster-terms\.R$
+^bin/4-signature-analysis\.R$
+^Results/
+^RData/
+^etc/
+^data/
+^renv/
+^\.renv\.lock$
+^sessionInfo\.txt$
+
+# Build artifacts
+^doc$
+^Meta$
+^.*\.log$
+
+# Development files
+^\.github$
+^codecov\.yml$
+^\.covrignore$

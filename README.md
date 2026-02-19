@@ -1,328 +1,119 @@
-# Adapted Acidosis
+# beltingSeq - Microarray and RNA-seq Analysis Package
 
-## Overview
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-This R project performs comprehensive transcriptomic analysis of glioblastoma (GBM) cell lines and patient samples exposed to acidic microenvironments. The analysis focuses on lipid metabolism-related pathways, including CSPG remodeling, lipid uptake, lipid droplet formation, and ferroptosis-associated gene signatures.
+# **🎉 NEW: beltingSeq** 
 
-The project integrates multiple microarray datasets from NCBI GEO and utilizes advanced bioinformatics approaches including differential gene expression analysis, gene set enrichment analysis (GSEA), pathway clustering, and gene signature validation across independent GBM cohorts.
+**beltingSeq** provides a complete workflow for analyzing gene expression data, from raw data normalization to publication-ready visualizations. Originally developed for the adapted-acidosis project, it has been generalized for use with any microarray or RNA-seq dataset.
 
-# 1.  Transcriptomic Analysis of the effects of acidosis on Glioblastoma cell lines and patient samples
+### Features
 
-- [Adapted Acidosis](#adapted-acidosis)
-  - [Overview](#overview)
-- [1.  Transcriptomic Analysis of the effects of acidosis on Glioblastoma cell lines and patient samples](#1--transcriptomic-analysis-of-the-effects-of-acidosis-on-glioblastoma-cell-lines-and-patient-samples)
-  - [1.1. Input data](#11-input-data)
-  - [1.2. Directory tree](#12-directory-tree)
-- [2. Bioinformatical pipeline](#2-bioinformatical-pipeline)
-  - [2.1. Data preprocessing \& differential gene expression (DGE) analysis](#21-data-preprocessing--differential-gene-expression-dge-analysis)
-      - [Overview:](#overview-1)
-      - [Main steps:](#main-steps)
-      - [Input data:](#input-data)
-      - [Output:](#output)
-  - [2.2. Pathway analysis](#22-pathway-analysis)
-      - [Overview:](#overview-2)
-      - [Main Steps:](#main-steps-1)
-      - [Input data:](#input-data-1)
-      - [Output:](#output-1)
-  - [2.3. GSEA clustering](#23-gsea-clustering)
-      - [Overview:](#overview-3)
-      - [Main Steps:](#main-steps-2)
-      - [Input data:](#input-data-2)
-      - [Output:](#output-2)
-  - [2.4. Gene signature analysis](#24-gene-signature-analysis)
-      - [Overview:](#overview-4)
-      - [Main Steps:](#main-steps-3)
-      - [Inputs:](#inputs)
-      - [Outputs:](#outputs)
-  - [3. Results](#3-results)
-  - [4. Getting Started](#4-getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-    - [Usage](#usage)
-  - [5. Data Availability](#5-data-availability)
-  - [6. Session Information](#6-session-information)
-  - [7. Citation](#7-citation)
-  - [8. License](#8-license)
-  - [9. Contact](#9-contact)
+🧬 **Data Processing**: Microarray normalization (Affymetrix RMA, Illumina neqc), differential expression with limma, automatic gene annotation  
+📊 **Enrichment Analysis**: GSEA with MSigDB, pathway clustering, ORA  
+📈 **Visualizations**: Volcano plots, GSEA enrichment plots, network graphs, statistical plots
 
-## 1.1. Input data
+<details>
 
-Four main data sources were used in these analyses:
+### Data Processing
+- **Microarray normalization**: Affymetrix (RMA) and Illumina (neqc) platforms
+- **Differential expression analysis**: Using limma with customizable contrasts
+- **Gene annotation**: Automatic conversion between probe IDs, gene symbols, and Entrez IDs
+- **Duplicate handling**: Smart removal of duplicate probes based on effect size
 
-1. **CCLD** - Affymetrix Clariom D Pico Gene Array performed on pooled laser-microdissected samples from lipid droplet rich (n=5) and lipid droplet lacking (n=5) matched pathological samples.
+### Enrichment Analysis
+- **Gene Set Enrichment Analysis (GSEA)**: Using MSigDB gene sets (KEGG, Reactome, GO, Hallmark)
+- **Over-Representation Analysis (ORA)**: Hypergeometric testing for pathway enrichment
+- **Term clustering**: Identify and visualize related pathways using Cohen's Kappa coefficient
+- **Network analysis**: Louvain clustering of enriched gene sets
 
-2. **HGCC** - Affymetrix Clariom D Pico Gene Array on three patient-derived primary glioblastoma cell lines grown as 3D vs. 2D cultures.
+### Visualizations
+- **Volcano plots**: Highlight differential expression with customizable significance thresholds
+- **GSEA enrichment plots**: Running enrichment scores with gene rankings
+- **Network graphs**: Visualize relationships between enriched pathways
+- **Cluster plots**: Compare enrichment across multiple datasets
+- **Statistical plots**: Boxplots with statistical testing
 
-3. **PANC1** - Affymetrix Clariom D Pico Gene Array on pancreatic cancer cell line PANC1, stimulated by a low-pH environment (pH 6.4) for 10 weeks (adapted acidosis, AA).
+</details>
 
-4. **U87** - Illumina HumanHT-12 v4 Expression BeadChip for gene expression analysis of U87 glioblastoma cells grown in low-pH (acidosis) or hypoxic conditions.
-
-5. **Validation datasets**: IvyGAP glioblastoma dataset for gene signature validation.
-
-> [!NOTE]
-> *All raw and processed data used in this analysis have been uploaded to NCBI's public data repository, the Gene Expression Omnibus (GEO).*
-
-The data are available under the unique IDs **GSE300758** (**CCLD**), **GSE300765** (**U87**), **GSE300768** (**PANC1**), and **GSE300771** (**HGCC**). The accession of the datasets is scheduled to stay private until 30th September, 2025, unless the manuscript enters review earlier.
-
-## 1.2. Directory tree
-
-```bash
-.
-├── adapted-acidosis.Rproj
-├── RData
-│   ├── CCLD_enrichment_results.RData
-│   ├── CCLD_processedData.RData
-│   ├── CGGA_processedData.RData
-│   ├── HGCC_enrichment_results.RData
-│   ├── HGCC_processedData.RData
-│   ├── IvyGap_processedData.RData
-│   ├── MSigDB_gene_sets.RData
-│   ├── PANC1_enrichment_results.RData
-│   ├── PANC1_processedData.RData
-│   ├── U87_enrichment_results.RData
-│   ├── U87_processedData.RData
-│   └── term_similarity_matrix.RData
-├── README.md
-├── Results
-│   ├── Fig-1C
-│   ├── Fig-1D
-│   ├── Fig-1F
-│   ├── Fig-2A
-│   ├── Fig-2D
-│   ├── Fig-2I
-│   ├── Supplementary-Fig-1A
-│   ├── Supplementary-Fig-3B
-│   ├── Supplementary-Fig-3I
-│   ├── Supplementary-Fig-4A
-│   ├── Supplementary-Fig-4E
-│   ├── Supplementary-Fig-5A
-│   └── Supplementary-Fig-5F
-├── bin
-│   ├── 1-preprocessing.R
-│   ├── 2-GSEA-analysis.R
-│   ├── 3-cluster-terms.R
-│   ├── 4-signature-analysis.R
-│   ├── functions.R
-│   └── packages.R
-├── etc
-│   ├── cluster-names.txt
-│   ├── gene-signature.txt
-│   ├── genes-of-interest.txt
-│   ├── pathways-of-interest.txt
-│   └── IvyGap
-│       ├── 2025-01-23_Ivy_GAP_expression.csv
-│       ├── 2025-01-23_Ivy_GAP_genes.csv
-│       ├── 2025-01-23_Ivy_GAP_pheno.csv
-│       └── README.txt
-├── renv
-│   ├── activate.R
-│   ├── fix-renv.R
-│   ├── fix-restore.R
-│   ├── library/
-│   └── settings.json
-├── renv.lock
-├── .Rprofile
-├── .Renviron
-└── sessionInfo.txt
-```
-
-# 2. Bioinformatical pipeline 
-
-## 2.1. Data preprocessing & differential gene expression (DGE) analysis
-
-#### Overview:
-The script [`1-preprocessing.R`](bin/1-preprocessing.R) performs preprocessing, normalization, and differential expression analysis (DEA) for multiple transcriptomic datasets from Affymetrix Clariom D Human Pico and Illumina BeadChip platforms.
-
-#### Main steps:
-1. Environment Setup:
-     - Sets working directory and loads required packages and custom functions.
-
-2. DGE Analysis each dataset:
-     - Svenja's CC +LD and CC no LD (Affymetrix)
-     - Hugo's Primary cells 2D vs 3D (Affymetrix)
-     - U87 Chronic Acidosis AA vs NA & HOX vs NOX (Illumina)
-     - PANC1 Chronic Acidosis AA vs NA (Affymetrix)
-
-For each dataset:
-  - Creates distinct results (tables) directories.
-  - Loads raw files.
-  - Normalize raw data and perform transcript filtering.
-  - Conduct differential expression analysis using limma.
-  - Remove duplicate gene symbols/IDs based on log2 fold change or t-stat.
-  - Summarize up- and down-regulated genes for each comparison.
-  - Save processed data as RData and Excel files for downstream analysis.
-
-Requirements:
-  - R packages: oligo, affycoretools, limma, stats
-  - Annotations: clariomdhumantranscriptcluster.db (v8.8.0), illuminaHumanv4.db (v1.26.0), org.Hs.eg.db (v3.20.0)
-  - Custom functions (from [`functions.R`](bin/functions.R)): normalizeTranscript, normalizeIllumina, limmaDEA, removeDuplicates
-
-#### Input data:
-  - Raw `.cel` files for Affirmetrix experiments, and calculated probe and control intensity summaries for the Illumina experiment
-
-#### Output:
-  - Processed RData for each dataset and comparison
-
-## 2.2. Pathway analysis
-
-#### Overview:
-The script [`2-GSEA-analysis.R`](bin/2-GSEA-analysis.R) performs comprehensive gene set enrichment analysis (GSEA) in a modular fashion, supporting all included datasets (Affymetrix Clariom D, Illumina BeadChip) and experimental designs. It executes GSEA against several gene set collections from MSigDB (Hallmark, GO:BP, KEGG, Reactome).
-
-#### Main Steps:
-1. Environment Setup:
-     - Sets working directory and loads required packages and custom functions.
-     - Loads MSigDB gene set databases (Hallmark, GO:BP, KEGG, Reactome) and saves it as RData.
-
-2. Pathway Analysis for each dataset:
-     - Svenja's CC +LD and CC no LD (Affymetrix)
-     - Hugo's Primary cells 2D vs 3D (Affymetrix)
-     - U87 Chronic Acidosis AA vs NA & HOX vs NOX (Illumina)
-     - PANC1 Chronic Acidosis AA vs NA (Affymetrix)
-
-For each dataset:
-  - Identifies and annotates DEGs
-  - Extracts gene lists for enrichment analysis and runs Gene Set Enrichment Analysis (GSEA) using MSigDB gene sets.
-
-Requirements:
-  - R packages: dplyr, tidyr, stringr, openxlsx, msigdbr, org.Hs.eg.db, cowplot, ggplot2, etc.
-  - Custom functions (from [`functions.R`](bin/functions.R)): get_significance, get_genelist, run_ora, extract_ora_results, run_gsea, extract_gsea_results, plot_pca, plot_venn, plot_vulcan, getEnrichmentTable, plotRunningScore, plotGeneRank, plotClusters.
-
-#### Input data:
-  - RData files with expression matrices and DEG tables for each dataset.
-
-#### Output:
-  - RData with all MSigDB gene sets used for analysis.
-  - RData with pathway enrichment results for each dataset.
-
-## 2.3. GSEA clustering
-
-#### Overview:
-
-The [`3-cluster-terms.R`](bin/3-cluster-terms.R) loads all gene sets that we used for GSEA analyses, and calculate Cohen's similarity matrix between all gene sets (GO terms, MSigDb hallmarks, KEGG, Reactome pathways).
-
-#### Main Steps:
-
-1. Calculate Cohen's similarity matrix between all gene sets (GO terms, MSigDb hallmarks, KEGG, Reactome pathways).
-
-Requirements:
-  - R packages: igraph, RCy3, etc.
-  - custom functions: cohen_kappa, get_cluster, get_cluster_representative, filter_graph, plot_network, getCircplotData, plotCircplot, plot_vulcan
-
-#### Input data:
-  - RData with all MSigDB gene sets used for analysis.
-
-#### Output:
-  - RData with the similarity matrix between all terms.
- 
-
-## 2.4. Gene signature analysis
-
-#### Overview:
-The [`4-signature-analysis.R`](bin/4-signature-analysis.R) validates identified gene signatures across independent glioblastoma cohorts. This script preprocesses the Ivy Glioblastoma Atlas Project (IvyGAP), TCGA-GBM, and CGGA datasets, filters for primary GBM samples, and performs gene signature scoring and correlation analyses.
-
-**Data Preprocessing:**
-- Normalized count reads from pre-processed data (sequence alignment and transcript abundance estimation)
-- Log2 transformation with 0.5 pseudocount added to avoid infinite values
-- Filtered primary tumors based on histology status and anatomical location
-
-**Sample Retention:**
-- IvyGAP: 122 primary GBM samples (from 270 total)
-- TCGA: 142 primary GBM samples (from 548 total)
-- CGGA: 183 primary GBM samples (from 1018 total)
-
-#### Main Steps:
-
-1. Load and preprocess IvyGAP, TCGA, and CGGA datasets
-2. Filter for primary GBM samples based on histological and molecular criteria
-
-#### Inputs:
-   - IvyGap expression and clinical data files ([`etc/IvyGap/`](etc/IvyGap/))
-
-#### Outputs:
-   - RData files with preprocessed cohort data
-
----
-
-## 3. Results
-
-The [`Results/`](Results/) directory contains individual scripts and figures for each panel in the manuscript:
-
-- **Main Figures**: Fig-1C, Fig-1D, Fig-1F, Fig-2A, Fig-2D, Fig-2I
-- **Supplementary Figures**: Supplementary-Fig-1A, 3B, 3I, 4A, 4E, 5A, 5F
-
-Each subdirectory contains:
-- A dedicated R script for generating the figure
-- A `Figures/` folder with output plots
-
-## 4. Getting Started
-
-### Prerequisites
-
-- R version 4.4.2 or higher
-- RStudio (recommended)
-- renv & BiocManager packages for dependency management
-
-### Installation
-
-1. Clone this repository:
-```bash
-git clone https://github.com/yourusername/adapted-acidosis.git
-cd adapted-acidosis
-```
-
-2. Open the R project file:
-```r
-# Open adapted-acidosis.Rproj in RStudio
-```
-
-3. Restore package dependencies:
-```r
-# renv should activate automatically
-# If issues occur, run:
-source("fix-renv.R")
-```
-
-### Usage
-
-Run the analysis pipeline in order:
+## Installation
 
 ```r
-# 1. Preprocessing and differential expression analysis
-source("bin/1-preprocessing.R")
+# Install from GitHub
+devtools::install_github("BeltingLab/beltingSeq")
 
-# 2. Gene set enrichment analysis
-source("bin/2-GSEA-analysis.R")
-
-# 3. Cluster enriched terms
-source("bin/3-cluster-terms.R")
-
-# 4. Validate gene signatures
-source("bin/4-signature-analysis.R")
+# Or install from local source
+devtools::install("path/to/beltingSeq")
 ```
 
-## 5. Data Availability
+## Quick Start
 
-All raw and processed data have been deposited in NCBI's Gene Expression Omnibus (GEO):
+```r
+library(beltingSeq)
 
-- **CCLD**: GSE300758
-- **U87**: GSE300765
-- **PANC1**: GSE300768
-- **HGCC**: GSE300771
+# 1. Normalize microarray data
+normalized_data <- normalizeTranscript(cel_files, clariomdhumantranscriptcluster.db)
 
-*Note: Datasets will remain private until September 30, 2025, unless the manuscript enters review earlier.*
+# 2. Differential expression analysis
+design <- c("control", "control", "treatment", "treatment")
+contrasts <- "treatment-control"
+deg_results <- limmaDEA(normalized_data, design, contrasts)
 
-## 6. Session Information
+# 3. Gene set enrichment analysis
+gene_list <- get_genelist(deg_results[[1]], 
+                          filter = deg_results[[1]]$adj.P.Val < 0.05,
+                          value = "t", 
+                          name = "entrezID")
+gsea_results <- run_gsea(gene_list$background, pathways)
 
-For reproducibility, R session information is available in [`sessionInfo.txt`](sessionInfo.txt).
+# 4. Visualize results
+plot_vulcan(deg_results[[1]], label = TRUE)
+```
 
-## 7. Citation
+## Directory Structure
 
-The data - missing from this repositroy - as well as the same code is also reposited on [Zenodo](https://doi.org/10.5281/zenodo.18414879). If you use this code or data, please cite our manuscript (details to be added upon publication).
+```
+beltingSeq/
+├── R/                    # Function definitions
+│   ├── processing.R      # Data processing functions
+│   ├── enrichment.R      # GSEA and ORA functions
+│   ├── clustering.R      # Term clustering functions
+│   └── visualization.R   # Plotting functions
+├── man/                  # Documentation (auto-generated)
+├── vignettes/            # Usage examples
+│   ├── preprocessing.Rmd
+│   ├── gsea_analysis.Rmd
+│   └── visualizations.Rmd
+├── inst/
+│   └── extdata/          # Example data
+├── tests/                # Unit tests
+├── DESCRIPTION           # Package metadata
+├── NAMESPACE             # Exports
+└── README.md             # This file
+```
 
-## 8. License
+## Documentation
+
+- **Setup**: [SETUP_GUIDE.md](SETUP_GUIDE.md)
+- **Vignettes**: [Preprocessing](vignettes/preprocessing.Rmd) | [GSEA](vignettes/gsea_analysis.Rmd) | [Visualizations](vignettes/visualizations.Rmd)
+- **Examples**: [inst/examples/](inst/examples/)
+
+## Example Workflows
+
+See the `vignettes/` directory for detailed examples:
+- **Preprocessing**: Normalize and filter microarray data
+- **GSEA Analysis**: Complete enrichment analysis workflow
+- **Visualizations**: Create publication-ready figures
+
+## Citation
+
+The originally developed code is reposited on [Zenodo](https://doi.org/10.5281/zenodo.18414879). If you use this code or data, please cite our manuscript: [doi.org/10.1038/s41556-026-01879-y](https://doi.org/10.1038/s41556-026-01879-y)
+
+> Bång-Rudenstam, A., Cerezo-Magaña, M., Horvath, M. *et al.* Tumour acidosis remodels the glycocalyx to control lipid scavenging and ferroptosis. *Nat Cell Biol* (2026).
+
+## License
 
 See the [LICENSE](LICENSE) file for details.
 
-## 9. Contact
+## Contact
 
-For questions or issues, please open an issue on GitHub or contact [@MartonHorvath98](https://github.com/MartonHorvath98).
+For questions and bug reports, please open an issue on GitHub or contact [@MartonHorvath98](https://github.com/MartonHorvath98).
