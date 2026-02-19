@@ -51,12 +51,12 @@ devtools::install("path/to/beltingSeq")
 library(beltingSeq)
 
 # 1. Normalize microarray data
-normalized_data <- normalizeTranscript(cel_files, clariomdhumantranscriptcluster.db)
+normalized_data <- normalize_transcript(cel_files, clariomdhumantranscriptcluster.db)
 
 # 2. Differential expression analysis
 design <- c("control", "control", "treatment", "treatment")
 contrasts <- "treatment-control"
-deg_results <- limmaDEA(normalized_data, design, contrasts)
+deg_results <- limma_dea(normalized_data, design, contrasts)
 
 # 3. Gene set enrichment analysis
 gene_list <- get_genelist(deg_results[[1]], 
