@@ -1,7 +1,7 @@
 Package: beltingSeq
 Type: Package
 Title: Processing and Visualization Tools for Microarray and RNA-seq Data
-Version: 0.2.0
+Version: 0.1.0
 Authors@R: person("Marton Horvath", "marton.horvath@med.lu.se", role = c("aut", "cre"),
                   email = "marton.horvath@med.lu.se")
 Description: A comprehensive toolkit for processing, analyzing, and visualizing
