@@ -93,7 +93,6 @@ beltingSeq/
 
 ## Documentation
 
-- **Setup**: [SETUP_GUIDE.md](SETUP_GUIDE.md)
 - **Vignettes**: [Preprocessing](vignettes/preprocessing.Rmd) | [GSEA](vignettes/gsea_analysis.Rmd) | [Visualizations](vignettes/visualizations.Rmd)
 - **Examples**: [inst/examples/](inst/examples/)
 
