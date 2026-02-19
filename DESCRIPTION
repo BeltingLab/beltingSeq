@@ -11,7 +11,7 @@ Description: A comprehensive toolkit for processing, analyzing, and visualizing
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.0
+RoxygenNote: 7.3.3
 Depends:
     R (>= 4.0.0)
 Imports:

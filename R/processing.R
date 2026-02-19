@@ -16,9 +16,9 @@
 #' @examples
 #' \dontrun{
 #' cel_files <- read.celfiles(list.celfiles("data/", full.names = TRUE))
-#' normalized <- normalizeTranscript(cel_files, clariomdhumantranscriptcluster.db)
+#' normalized <- normalize_transcript(cel_files, clariomdhumantranscriptcluster.db)
 #' }
-normalizeTranscript <- function(.data, .db){
+normalize_transcript <- function(.data, .db){
   # RMA does background normalization, log2 transformation and quantile normalization
   data <- oligo::rma(.data, target = "core")
   # Annotating using info assembled by the Bioconductor Core Team
@@ -61,9 +61,9 @@ normalizeTranscript <- function(.data, .db){
 #' targets <- readTargets("targets.txt")
 #' x <- read.ilmn(files = "data.txt", ctrlfiles = "controls.txt")
 #' # Normalize
-#' normalized <- normalizeIllumina(x, alias_db)
+#' normalized <- normalize_illumina(x, alias_db)
 #' }
-normalizeIllumina <- function(.df, .dbconn, .samples = colnames(.df$E)){
+normalize_illumina <- function(.df, .dbconn, .samples = colnames(.df$E)){
   x <- illuminaHumanv4ENTREZID
   
   # Normalization and background correction
@@ -89,7 +89,7 @@ normalizeIllumina <- function(.df, .dbconn, .samples = colnames(.df$E)){
     dplyr::mutate(
       SYMBOL = ifelse(
         ENTREZID == "NA" | is.na(ENTREZID),
-        yes = switchAlias(.dbconn, SYMBOL),
+        yes = switch_alias(.dbconn, SYMBOL),
         no = SYMBOL
       )
     )
@@ -152,7 +152,7 @@ tryMapID <- function(ID, inp, outp){
 #'
 #' @return Updated gene symbol or original ID
 #' @keywords internal
-switchAlias <- function(dbconn, ID){
+switch_alias <- function(dbconn, ID){
   alias <- as.character(dbconn[which(dbconn$alias == ID), ]$symbol)[1]
   
   if (is.na(alias)){
@@ -178,9 +178,9 @@ switchAlias <- function(dbconn, ID){
 #' @examples
 #' \dontrun{
 #' # Remove duplicates based on log2 fold change
-#' unique_genes <- removeDuplicates(expr_data, "log2FoldChange", "SYMBOL")
+#' unique_genes <- remove_duplicates(expr_data, "log2FoldChange", "SYMBOL")
 #' }
-removeDuplicates <- function(.data, .column, .symbol){
+remove_duplicates <- function(.data, .column, .symbol){
   # Sort the data frame based on the specified values
   data <- .data[order(abs(.data[[.column]]), decreasing = TRUE), ]
   # Remove duplicates
@@ -207,9 +207,9 @@ removeDuplicates <- function(.data, .column, .symbol){
 #' \dontrun{
 #' design <- c("control", "control", "treatment", "treatment")
 #' contrasts <- c("treatment-control")
-#' results <- limmaDEA(expr_data, design, contrasts)
+#' results <- limma_dea(expr_data, design, contrasts)
 #' }
-limmaDEA <- function(.data, .design, .contrast){
+limma_dea <- function(.data, .design, .contrast){
   # Extract numeric columns
   mat <- .data[, sapply(.data, is.numeric)]
   colnames(mat) <- gsub("_\\(.*$", "\\1", colnames(mat))

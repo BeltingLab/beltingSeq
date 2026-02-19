@@ -1,9 +1,0 @@
-Gene name
-CA9
-SRGN
-DCN
-CSGALNACT1
-C7orf68
-BGN
-CHPF
-G0S2

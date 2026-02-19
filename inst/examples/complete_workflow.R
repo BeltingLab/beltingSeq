@@ -26,14 +26,14 @@ cel_data <- read.celfiles(list.celfiles(data_dir, full.names = TRUE))
 
 # Normalize with RMA
 library(clariomdhumantranscriptcluster.db)
-normalized_data <- normalizeTranscript(cel_data, clariomdhumantranscriptcluster.db)
+normalized_data <- normalize_transcript(cel_data, clariomdhumantranscriptcluster.db)
 
 # Calculate log2 fold change (adjust sample names as needed)
 normalized_data$log2FoldChange <- 
   normalized_data$Treatment - normalized_data$Control
 
 # Remove duplicate probes
-unique_data <- removeDuplicates(
+unique_data <- remove_duplicates(
   .data = normalized_data,
   .column = "log2FoldChange",
   .symbol = "SYMBOL"
@@ -51,7 +51,7 @@ design <- c("control", "control", "control",
 contrasts <- c("treatment-control")
 
 # Perform differential expression analysis
-deg_results <- limmaDEA(
+deg_results <- limma_dea(
   .data = unique_data,
   .design = design,
   .contrast = contrasts
@@ -186,13 +186,13 @@ running_scores$Description <- factor(
 )
 
 # Create plots
-p1 <- plotRunningScore(
+p1 <- plot_running_score(
   .df = running_scores,
   .x = "x", .y = "runningScore",
   .color = "Description", .palette = palette
 )
 
-p2 <- plotGeneRank(
+p2 <- plot_gene_rank(
   .df = running_scores,
   .x = "x", .facet = "Description~.",
   .color = "Description", .palette = palette
@@ -210,7 +210,7 @@ ggsave("results/figures/gsea_enrichment.svg", enrichment_plot,
        width = 6, height = 4.45, device = "svg", bg = "white")
 
 # 3. Create enrichment summary table
-enrich_table <- getEnrichmentTable(
+enrich_table <- get_enrichment_table(
   .df = rbind(PATHWAY_results$df[pathway_ranks, ],
               GO_results$df[go_ranks, ]),
   .order = "",

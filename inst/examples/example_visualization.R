@@ -71,8 +71,8 @@ go_ranks <- which(CCLD.GO$df$Name %in% names(palette))
 
 # Extract running enrichment scores (omicsFlow function)
 running_scores <- do.call(rbind, c(
-  lapply(pathway_ranks, gsInfo, object = CCLD.GSEA$gsea),
-  lapply(go_ranks, gsInfo, object = CCLD.GO$gsea)
+  lapply(pathway_ranks, gs_info, object = CCLD.GSEA$gsea),
+  lapply(go_ranks, gs_info, object = CCLD.GO$gsea)
 ))
 
 # Clean up pathway names
@@ -83,14 +83,14 @@ running_scores$Description <- factor(
 )
 
 # Create running score plot (omicsFlow function)
-p1 <- plotRunningScore(
+p1 <- plot_running_score(
   .df = running_scores, 
   .x = "x", .y = "runningScore", 
   .color = "Description", .palette = palette
 )
 
 # Create gene rank plot (omicsFlow function)
-p2 <- plotGeneRank(
+p2 <- plot_gene_rank(
   .df = running_scores, 
   .x = "x", .facet = "Description~.",
   .color = "Description", .palette = palette
@@ -116,7 +116,7 @@ cat("✓ GSEA enrichment plots created\n")
 ################################################################################
 
 # Create enrichment table (omicsFlow function)
-enrich_table <- getEnrichmentTable(
+enrich_table <- get_enrichment_table(
   .df = rbind(CCLD.GSEA$df[pathway_ranks, ],
               CCLD.GO$df[go_ranks, ]),
   .order = "",
@@ -174,10 +174,10 @@ cat("\n========================================\n")
 cat("Visualization complete!\n")
 cat("Using omicsFlow package functions:\n")
 cat("  - plot_vulcan()\n")
-cat("  - gsInfo()\n")
-cat("  - plotRunningScore()\n")
-cat("  - plotGeneRank()\n")
-cat("  - getEnrichmentTable()\n")
+cat("  - gs_info()\n")
+cat("  - plot_running_score()\n")
+cat("  - plot_gene_rank()\n")
+cat("  - get_enrichment_table()\n")
 cat("\nFigures saved in: results/figures/\n")
 cat("Available formats: PNG (300 dpi) and SVG (vector)\n")
 cat("========================================\n")

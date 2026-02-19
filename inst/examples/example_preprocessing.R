@@ -29,7 +29,7 @@ CCLD.dat <- read.celfiles(list.celfiles(data_dir, full.names = TRUE))
 
 # Normalize transcripts using RMA (beltingSeq function)
 library(clariomdhumantranscriptcluster.db)
-CCLD.expr <- normalizeTranscript(CCLD.dat, clariomdhumantranscriptcluster.db)
+CCLD.expr <- normalize_transcript(CCLD.dat, clariomdhumantranscriptcluster.db)
 
 # Calculate log2 fold change
 CCLD.expr$log2FoldChange <- 
@@ -37,7 +37,7 @@ CCLD.expr$log2FoldChange <-
   CCLD.expr$`CC_noLD_(Clariom_D_Human).CEL`
 
 # Remove duplicate symbols (beltingSeq function)
-CCLD.expr <- removeDuplicates(
+CCLD.expr <- remove_duplicates(
   .data = CCLD.expr,
   .column = "log2FoldChange",
   .symbol = "SYMBOL"
@@ -76,10 +76,10 @@ data_dir <- "../data/raw/Affymetrix/HGCC/"
 HGCC.dat <- read.celfiles(list.celfiles(data_dir, full.names = TRUE))
 
 # Normalize with beltingSeq
-HGCC.expr <- normalizeTranscript(HGCC.dat, clariomdhumantranscriptcluster.db)
+HGCC.expr <- normalize_transcript(HGCC.dat, clariomdhumantranscriptcluster.db)
 
 # Perform differential expression analysis (beltingSeq function)
-HGCC.deg <- limmaDEA(
+HGCC.deg <- limma_dea(
   .data = HGCC.expr,
   .design = c("U3017_2D", "U3017_2D", "U3017_2D",
               "U3017_3D", "U3017_3D", "U3017_3D",
@@ -95,7 +95,7 @@ HGCC.deg <- limmaDEA(
 names(HGCC.deg) <- c("U3017", "U3047", "U3054")
 
 # Remove duplicates (beltingSeq function)
-HGCC.deg <- lapply(HGCC.deg, removeDuplicates, 
+HGCC.deg <- lapply(HGCC.deg, remove_duplicates, 
                    .column = "t", .symbol = "ID.Symbol")
 
 # Add significance classification (beltingSeq function)
@@ -125,9 +125,9 @@ write.xlsx(HGCC.deg, sheetName = names(HGCC.deg),
 cat("\n========================================\n")
 cat("Preprocessing complete!\n")
 cat("Using beltingSeq package functions:\n")
-cat("  - normalizeTranscript()\n")
-cat("  - removeDuplicates()\n")
-cat("  - limmaDEA()\n")
+cat("  - normalize_transcript()\n")
+cat("  - remove_duplicates()\n")
+cat("  - limma_dea()\n")
 cat("  - get_significance()\n")
 cat("========================================\n")
 
