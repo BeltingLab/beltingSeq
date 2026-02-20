@@ -79,13 +79,13 @@ beltingSeq/
 │   ├── clustering.R      # Term clustering functions
 │   └── visualization.R   # Plotting functions
 ├── man/                  # Documentation (auto-generated)
+│   └── figures/          # Logo
 ├── vignettes/            # Usage examples
 │   ├── preprocessing.Rmd
 │   ├── gsea_analysis.Rmd
 │   └── visualizations.Rmd
 ├── inst/
-│   └── extdata/          # Example data
-├── tests/                # Unit tests
+│   └── examples/         # Example scripts
 ├── DESCRIPTION           # Package metadata
 ├── NAMESPACE             # Exports
 └── README.md             # This file
