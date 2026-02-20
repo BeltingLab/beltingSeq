@@ -210,7 +210,7 @@ plot_clusters <- function(.df, .pathways){
 #' @return ggplot object
 #' @export
 #'
-#' @importFrom ggplot2 ggplot stat_ellipse geom_segment geom_point geom_text_repel
+#' @importFrom ggplot2 ggplot stat_ellipse geom_segment geom_point
 #'   scale_fill_manual scale_size_continuous theme_void theme element_text
 #' @importFrom ggrepel geom_text_repel
 #' @importFrom ggnewscale new_scale_fill

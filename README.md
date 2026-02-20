@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# **🎉 NEW: beltingSeq** 
+# **🎉 NEW: beltingSeq** <img src="man/figures/logo.png" align="right" height="120" alt="" />
 
 **beltingSeq** provides a complete workflow for analyzing gene expression data, from raw data normalization to publication-ready visualizations. Originally developed for the adapted-acidosis project, it has been generalized for use with any microarray or RNA-seq dataset.
 
