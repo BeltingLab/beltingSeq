@@ -359,3 +359,321 @@ plot_score <- function(.score, .formula, .ref_group, .x, .y, .title, number = FA
   
   return(list("plot" = plot, "stat.test" = stat.test))
 }
+
+# Venn diagram functions
+
+# Helper function for recursive merging
+merge.rec <- function(.list, ...){
+  if(length(.list)==1) return(.list[[1]])
+  Recall(c(list(merge(.list[[1]], .list[[2]], ...)), .list[-(1:2)]), ...)
+}
+
+#' Generate Venn diagram data object
+#'
+#' @description Prepares data for Venn diagram plotting by merging DEG sets
+#'
+#' @param sets List of data frames with differential expression results
+#' @param names Character vector of names for each set
+#'
+#' @return Data frame with merged gene information and set membership
+#' @export
+#'
+#' @importFrom dplyr filter select mutate across rowwise ungroup c_across relocate
+#' @importFrom stringr str_detect
+#' @examples
+#' \dontrun{
+#' venn_data <- generate_venn_object(
+#'   sets = list(deg1, deg2, deg3),
+#'   names = c("Set1", "Set2", "Set3")
+#' )
+#' }
+generate_venn_object <- function(sets, names){
+  n <- length(sets)
+  
+  if (!n %in% 2:4) {
+    stop("Only 2-, 3-, or 4-way Venn diagrams are supported.")
+  }
+  if (length(names) != n) {
+    stop("Length of names must match the number of sets.")
+  }
+  
+  list <- lapply(sets, function(x) {
+    x %>% 
+      dplyr::filter(stringr::str_detect(significance, c("up-regulated|down-regulated"))) %>% 
+      dplyr::select(Symbol, log2FoldChange)
+  })
+  names(list) <- names
+  
+  log_df <- merge.rec(list, by = c("Symbol"), suffixes = c("",""), all = T) %>% 
+    setNames(., c("Symbol", paste("logFC", names, sep = "_")))
+  log_df <- log_df %>% dplyr::distinct(Symbol, .keep_all = T)
+  
+  set_df <- log_df %>%
+    dplyr::mutate(across(starts_with("logFC"), ~ifelse(is.na(.), FALSE, TRUE)))
+  
+  table <- merge(log_df, set_df, suffixes = c("",""), by = "Symbol") %>%
+    dplyr::relocate(where(is.logical), .before = where(is.character)) %>% 
+    dplyr::relocate(where(is.numeric), .after = where(is.logical))
+  
+  colnames(table)[1:n] <- names
+  table <- table %>% 
+      dplyr::rowwise() %>%
+      dplyr::mutate(label = paste(names(.)[which(dplyr::c_across(where(is.logical)))], collapse = "-")) %>%
+      dplyr::ungroup()
+  return(table)
+}
+
+# Helper function for 4-way Venn layout
+fourway_venn <- function(sets){
+  ellipses <- data.frame(
+    set = sets,
+    x0 = c(3.5, 5, 5, 6.5),
+    y0 = c(4.7, 5.7, 5.7, 4.7),
+    a  = c(3.5, 3.5, 3.5, 3.5),
+    b  = c(2, 1.7, 1.7, 2),
+    angle = c(-10, -10, 10, 10),
+    row.names = NULL
+  )
+  
+  set_names <- c(
+    sets,
+    combn(sets, 2, paste, collapse="-"),
+    combn(sets, 3, paste, collapse="-"),
+    paste(sets, collapse="-")
+  )
+  
+  labels <- data.frame(
+    x = c(1.5, 3.5, 6.5, 9, 2.4, 2.4, 5, 5, 7.4, 7.4, 4, 4, 6, 6, 5),
+    y = c(5.5, 7.5, 7.5, 5.5, 6.7, 4, 3, 7, 4, 6.7, 6, 3.9, 6, 3.9, 5),
+    label = set_names,
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+  
+  return(list(
+    circles = ellipses,
+    labels = labels
+  ))
+}
+
+#' Generate Venn diagram layout
+#'
+#' @description Creates coordinates for circles and labels in a 2-4 way Venn diagram
+#'
+#' @param sets Character vector of set names
+#' @param R Distance of circle centers from origin (default: 1.2)
+#' @param r Circle radius (default: 2)
+#' @param RR Label radius for set names (default: 2.4)
+#' @param d Pairwise intersection label radius (default: 1.6)
+#'
+#' @return List with circles and labels data frames
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' layout <- generate_venn_layout(c("Set1", "Set2", "Set3"))
+#' }
+generate_venn_layout <- function(sets,
+                                 R = 1.2,  # distance of centers from origin
+                                 r = 2,    # circle radius
+                                 RR = 2.4, # label radius
+                                 d = 1.6   # pairwise label radius
+                                 ) {
+  
+  n <- length(sets)
+  
+  if (!n %in% 2:4) {
+    stop("Only 2-, 3-, or 4-way Venn diagrams are supported.")
+  }
+  
+  # ---- Polar helper ----
+  polar_to_cart <- function(radius, angle_deg) {
+    angle_rad <- angle_deg * pi / 180
+    c(
+      x = radius * cos(angle_rad),
+      y = radius * sin(angle_rad)
+    )
+  }
+  
+  # ---- Define angles dynamically ----
+  start <- switch(as.character(n),
+                  "2" = 0,
+                  "3" = 30,
+                  "4" = 45)
+  
+  step <- switch(as.character(n),
+                 "2" = 180,
+                 "3" = 120,
+                 "4" = 90)
+  
+  angles <- seq(start, by = step, length.out = n)
+  
+  # ---- Circle centers ----
+  centers <- t(sapply(angles, function(a) polar_to_cart(R, a)))
+  colnames(centers) <- c("x0","y0")
+  
+  circles <- data.frame(
+    set = sets,
+    x0 = centers[,1],
+    y0 = centers[,2],
+    a = rep(r, n),
+    b = rep(r, n),
+    angle = rep(0, n),
+    row.names = NULL
+  )
+  
+  # ---- SINGLE SET LABELS ----
+  single_labels <- t(sapply(angles, function(a) polar_to_cart(RR, a)))
+  
+  labels_df <- data.frame(
+    x = single_labels[,1],
+    y = single_labels[,2],
+    label = sets,
+    stringsAsFactors = FALSE,
+    row.names = NULL
+  )
+  
+  if (n == 4) {
+    return(fourway_venn(sets))
+  }
+  
+  # ---- DOUBLETS ----
+  if (n == 2) {
+    labels_df <- rbind(
+      labels_df,
+      data.frame(x = 0, y = 0,
+                 label = paste(sets, collapse = "-"),
+                 row.names = NULL)
+    )
+  # ---- TRIPLETS ----
+  } else {
+    doublet_angles <- seq(start + step/2, by = (-1) * step, length.out = n)
+    doublet_combs  <- combn(sets, 2)
+    
+    for (i in seq_len(ncol(doublet_combs))) {
+      pos <- polar_to_cart(d, doublet_angles[i])
+      
+      labels_df <- rbind(
+        labels_df,
+        data.frame(
+          x = pos[1],
+          y = pos[2],
+          label = paste(doublet_combs[,i], collapse = "-"),
+          row.names = NULL
+        )
+      )
+    }
+    
+    labels_df <- rbind(
+      labels_df,
+      data.frame(x = 0, y = 0,
+                 label = paste(sets, collapse = "-"),
+                 row.names = NULL)
+    )
+  }
+  
+  return(list(
+    circles = circles,
+    labels  = labels_df
+  ))
+}
+
+#' Create Venn diagram with expression trends
+#'
+#' @description Generates a Venn diagram showing overlaps between differential expression results
+#' with pie charts indicating regulation direction (up/down/opposing)
+#'
+#' @param sets List of data frames with differential expression results
+#' @param names Character vector of names for each set
+#' @param R Distance of circle centers from origin (default: 1.2)
+#' @param r Circle radius (default: 2)
+#' @param RR Label radius for set names (default: 2.4)
+#' @param d Pairwise intersection label radius (default: 1.6)
+#'
+#' @return ggplot object
+#' @export
+#'
+#' @importFrom ggplot2 ggplot aes theme guides guide_legend geom_label scale_fill_manual scale_fill_viridis_d theme element_text unit
+#' @importFrom ggforce geom_ellipse
+#' @importFrom ggdendro theme_dendro
+#' @importFrom ggnewscale new_scale_fill
+#' @importFrom scatterpie geom_scatterpie
+#' @importFrom dplyr group_by summarise inner_join mutate_all case_when c_across across
+#' @importFrom tidyr pivot_wider
+#' @examples
+#' \dontrun{
+#' plot <- plot_venn(
+#'   sets = list(deg1, deg2, deg3),
+#'   names = c("Set1", "Set2", "Set3")
+#' )
+#' }
+plot_venn <- function(sets, names,
+                      R = 1.2, r = 2, RR = 2.4, d = 1.6){
+  
+  data <- generate_venn_object(sets, names)
+  layout <- generate_venn_layout(names, R, r, RR, d)
+  
+  regions <- data %>%
+    dplyr::group_by(label) %>%
+    dplyr::summarise(size = n())
+  
+  regions <- merge(layout$labels, regions, by = "label", all.x = TRUE)
+  
+  point.matrix <- data %>% 
+    dplyr::rowwise(.) %>% 
+    # Add jitter to the coordinates for better visualization
+    dplyr::mutate(
+      # Determine the trend of gene expression
+      trend = dplyr::case_when(
+        all(dplyr::c_across(starts_with("logFC")) > 0, na.rm = T) ~ 'UP',
+        all(dplyr::c_across(starts_with("logFC")) < 0, na.rm = T) ~ 'DOWN',
+        TRUE ~ 'CHANGE'
+      ),
+      trend = as.factor(trend)
+    ) %>% 
+    dplyr::ungroup(.)
+  
+  trend.matrix <- point.matrix %>% 
+    dplyr::group_by(label, trend) %>% 
+    dplyr::summarise(size = n()) %>% 
+    dplyr::inner_join(layout$labels, by = "label") %>% 
+    tidyr::pivot_wider(names_from = trend, values_from = size) %>% 
+    dplyr::mutate_all(~ifelse(is.na(.),0,.))
+  
+  plot <- ggplot2::ggplot() +
+    # Clear the background and axes
+    ggdendro::theme_dendro() +
+    # Plot the ellipses
+    ggforce::geom_ellipse(
+      data = layout$circles, # ellipse coordinates
+      ggplot2::aes(x0=x0, y0=y0, a=a, b=b, angle=angle, fill = set),
+      color = "white", alpha = .4) +
+    ggplot2::scale_fill_viridis_d(option = "plasma") +
+    ggplot2::guides(fill = ggplot2::guide_legend(title = "Data sets",
+                               title.position="top", title.hjust = 0.5)) +
+    ggnewscale::new_scale_fill() +
+    scatterpie::geom_scatterpie(data = trend.matrix,
+                    cols = c("UP","DOWN","CHANGE"), color = "grey25",
+                    ggplot2::aes(x=x, y=y, group=label), pie_scale = 3) +
+    ggplot2::geom_label(
+      data = regions, # Label coordinates
+      ggplot2::aes(x = x, y = y, label = size),
+      size = 6, alpha = 0.5, fill = 'white', color = 'grey15') +
+    # Paint the genes
+    ggplot2::scale_fill_manual(
+      values = c("UP" = "red",
+                 "DOWN" = "blue",
+                 "CHANGE" = "orange"),
+      labels = c("UP"="Activated",
+                 "DOWN"="Inhibited",
+                 "CHANGE"="Opposing regulation")) +
+    ggplot2::guides(fill = ggplot2::guide_legend(title = "Regulation",
+                               title.position="top", title.hjust = 0.5)) +
+    # Increase font size and adjust legend placement
+    ggplot2::theme(text = ggplot2::element_text(size = 16),
+          legend.key.spacing = ggplot2::unit(.5, 'cm'),
+          legend.spacing = ggplot2::unit(2, 'cm'),
+          legend.position = 'bottom')
+  
+  return(plot)
+}
