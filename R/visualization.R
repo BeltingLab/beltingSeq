@@ -677,3 +677,81 @@ plot_venn <- function(sets, names,
   
   return(plot)
 }
+
+#' Create two-panel barplot for ORA results
+#'
+#' @description Generates a 2-panel barplot showing the top significantly enriched pathways
+#' for up-regulated and down-regulated genes
+#'
+#' @param list List containing ORA results with "Signif. up-regulated" and "Signif. down-regulated" elements
+#' @param name Character string for the plot title
+#' @param n Number of top pathways to display (default: 10)
+#' @param terms Character, either "terms" for GO/HALLMARK or "pathways" for REACTOME/KEGG (default: "terms")
+#'
+#' @return cowplot grid object with two barplots
+#' @export
+#'
+#' @importFrom ggplot2 ggplot aes geom_bar coord_flip labs theme_bw theme element_rect scale_fill_continuous scale_x_discrete scale_y_reverse
+#' @importFrom dplyr slice_head mutate
+#' @importFrom stringr str_trim str_replace_all str_wrap
+#' @importFrom cowplot plot_grid
+#' @examples
+#' \dontrun{
+#' plot <- plot_ora_bar(
+#'   list = ora_results,
+#'   name = "Comparison_Name",
+#'   n = 10,
+#'   terms = "terms"
+#' )
+#' }
+plot_ora_bar <- function(list, name, n = 10, terms = c("terms", "pathways")) {
+  filter <- ifelse(terms == "terms", "GOBP|HALLMARK|_", "REACTOME|KEGG|_")
+  
+  df_up <- as.data.frame(list[["Signif. up-regulated"]][["ora"]]) %>%
+    dplyr::slice_head(n = n) %>% 
+    dplyr::mutate(ID = stringr::str_trim(stringr::str_replace_all(ID, !!filter, " "))) %>% 
+    dplyr::mutate(ID = reorder(ID, FoldEnrichment))
+  
+  df_down <- as.data.frame(list[["Signif. down-regulated"]][["ora"]]) %>%
+    dplyr::slice_head(n = n) %>% 
+    dplyr::mutate(ID = stringr::str_trim(stringr::str_replace_all(ID, !!filter, " "))) %>% 
+    dplyr::mutate(ID = reorder(ID, -FoldEnrichment))
+  
+  p1 <- ggplot2::ggplot(df_up,
+               ggplot2::aes(x = ID,
+                   y = FoldEnrichment, fill = p.adjust)) +
+    ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge()) +
+    ggplot2::scale_fill_continuous(palette =  c("#FC9272", "#DE2D26")) +
+    ggplot2::coord_flip() +
+    ggplot2::scale_x_discrete(position = "top",
+                     labels = function(x) stringr::str_wrap(x, width = 40)) +
+    ggplot2::labs(title = "Up-regulated in 3D",
+         x = "", fill = "Adj. p-value",
+         y = "Fold Enrichment") +
+    ggplot2::theme_bw() + 
+    ggplot2::theme(legend.position=c(.75,.15),
+          legend.background = ggplot2::element_rect(fill = NA))
+  
+  p2 <- ggplot2::ggplot(df_down,
+               ggplot2::aes(x = ID,
+                   y = FoldEnrichment, fill = p.adjust)) +
+    ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge()) +
+    ggplot2::scale_fill_continuous(palette =  c("#9ECAE1", "#3182BD")) +
+    ggplot2::scale_y_reverse() +
+    ggplot2::scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 40)) +
+    ggplot2::coord_flip() +
+    ggplot2::labs(title = "Down-regulated in 3D",
+         x = "", fill = "Adj. p-value",
+         y = "Fold Enrichment") +
+    ggplot2::theme_bw() + 
+    ggplot2::theme(legend.position=c(.25,.85),
+          legend.background = ggplot2::element_rect(fill = NA))
+  
+  title_gg <- ggplot2::ggplot() + 
+    ggplot2::labs(title = stringr::str_replace_all(name, "_", " ")) + 
+    ggplot2::theme_minimal()
+  gridded <- cowplot::plot_grid(p2, p1, ncol = 2, align = "h")
+  
+  grid <- cowplot::plot_grid(title_gg, gridded, ncol = 1, rel_heights = c(0.1, 1))
+  return(grid)
+}
