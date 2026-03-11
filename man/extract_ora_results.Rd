@@ -4,12 +4,14 @@
 \alias{extract_ora_results}
 \title{Extract and format ORA results}
 \usage{
-extract_ora_results(.ora, .db)
+extract_ora_results(.ora, .db, signif_cutoff = 0.1)
 }
 \arguments{
 \item{.ora}{enrichResult object from clusterProfiler}
 
 \item{.db}{Database with pathway annotations (gs_name, gs_exact_source, gs_description)}
+
+\item{signif_cutoff}{Adjusted p-value cutoff for significant results (default: 0.1)}
 }
 \value{
 List with two data frames: df (all results) and sig_df (significant results, p.adjust < 0.1)

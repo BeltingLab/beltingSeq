@@ -362,7 +362,21 @@ plot_score <- function(.score, .formula, .ref_group, .x, .y, .title, number = FA
 
 # Venn diagram functions
 
-# Helper function for recursive merging
+#' Recursively merge multiple data frames
+#'
+#' @description Helper function to recursively merge a list of data frames into a single data frame
+#'
+#' @param .list List of data frames to merge
+#' @param ... Additional arguments passed to base::merge()
+#'
+#' @return Single merged data frame
+#' @keywords internal
+#'
+#' @examples
+#' \dontrun{
+#' df_list <- list(df1, df2, df3)
+#' merged <- merge.rec(df_list, by = "ID", all = TRUE)
+#' }
 merge.rec <- function(.list, ...){
   if(length(.list)==1) return(.list[[1]])
   Recall(c(list(merge(.list[[1]], .list[[2]], ...)), .list[-(1:2)]), ...)
@@ -686,6 +700,7 @@ plot_venn <- function(sets, names,
 #' @param list List containing ORA results with "Signif. up-regulated" and "Signif. down-regulated" elements
 #' @param name Character string for the plot title
 #' @param n Number of top pathways to display (default: 10)
+#' @param legend Character string for the legend title
 #' @param terms Character, either "terms" for GO/HALLMARK or "pathways" for REACTOME/KEGG (default: "terms")
 #'
 #' @return cowplot grid object with two barplots
@@ -701,10 +716,11 @@ plot_venn <- function(sets, names,
 #'   list = ora_results,
 #'   name = "Comparison_Name",
 #'   n = 10,
+#'   legend = "3D",
 #'   terms = "terms"
 #' )
 #' }
-plot_ora_bar <- function(list, name, n = 10, terms = c("terms", "pathways")) {
+plot_ora_bar <- function(list, name, n = 10, legend, terms = c("terms", "pathways")) {
   filter <- ifelse(terms == "terms", "GOBP|HALLMARK|_", "REACTOME|KEGG|_")
   
   df_up <- as.data.frame(list[["Signif. up-regulated"]][["ora"]]) %>%
@@ -721,11 +737,11 @@ plot_ora_bar <- function(list, name, n = 10, terms = c("terms", "pathways")) {
                ggplot2::aes(x = ID,
                    y = FoldEnrichment, fill = p.adjust)) +
     ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge()) +
-    ggplot2::scale_fill_continuous(palette =  c("#FC9272", "#DE2D26")) +
+    ggplot2::scale_fill_continuous(palette =  c("#DE2D26", "#FC9272")) +
     ggplot2::coord_flip() +
     ggplot2::scale_x_discrete(position = "top",
                      labels = function(x) stringr::str_wrap(x, width = 40)) +
-    ggplot2::labs(title = "Up-regulated in 3D",
+    ggplot2::labs(title = paste("Up-regulated in", legend),
          x = "", fill = "Adj. p-value",
          y = "Fold Enrichment") +
     ggplot2::theme_bw() + 
@@ -736,11 +752,11 @@ plot_ora_bar <- function(list, name, n = 10, terms = c("terms", "pathways")) {
                ggplot2::aes(x = ID,
                    y = FoldEnrichment, fill = p.adjust)) +
     ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge()) +
-    ggplot2::scale_fill_continuous(palette =  c("#9ECAE1", "#3182BD")) +
+    ggplot2::scale_fill_continuous(palette =  c("#3182BD", "#9ECAE1")) +
     ggplot2::scale_y_reverse() +
     ggplot2::scale_x_discrete(labels = function(x) stringr::str_wrap(x, width = 40)) +
     ggplot2::coord_flip() +
-    ggplot2::labs(title = "Down-regulated in 3D",
+    ggplot2::labs(title = paste("Down-regulated in", legend),
          x = "", fill = "Adj. p-value",
          y = "Fold Enrichment") +
     ggplot2::theme_bw() + 

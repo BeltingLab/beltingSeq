@@ -4,12 +4,12 @@
 \alias{extract_gsea_results}
 \title{Extract and format GSEA results}
 \usage{
-extract_gsea_results(.gsea, .db)
+extract_gsea_results(.gsea, .db, signif_cutoff = 0.1)
 }
 \arguments{
 \item{.gsea}{gseaResult object from clusterProfiler}
 
-\item{.db}{Database with pathway annotations (gs_name, gs_exact_source, gs_description, gs_subcat)}
+\item{.db}{Database with pathway annotations (gs_name, gs_exact_source, gs_description, gs_subcollection)}
 }
 \value{
 List with two data frames: df (all results) and sig_df (significant results, p.adjust < 0.1)
