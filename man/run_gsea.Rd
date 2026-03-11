@@ -4,16 +4,36 @@
 \alias{run_gsea}
 \title{Gene Set Enrichment Analysis}
 \usage{
-run_gsea(.geneset, .terms, minGSSize = 10, maxGSSize = 500)
+run_gsea(
+  .seed,
+  .geneset,
+  .terms,
+  species = c("human", "mouse"),
+  minGSSize = 10,
+  maxGSSize = 500,
+  pvalueCutoff = 1,
+  eps = 0,
+  pAdjustMethod = "BH"
+)
 }
 \arguments{
+\item{.seed}{Random seed for reproducibility}
+
 \item{.geneset}{Named numeric vector of genes ranked by effect size (Entrez IDs as names)}
 
 \item{.terms}{Data frame with gene set information (gs_name and human_entrez_gene columns)}
 
+\item{species}{Species for gene annotation ("human" or "mouse")}
+
 \item{minGSSize}{Minimum gene set size (default: 10)}
 
 \item{maxGSSize}{Maximum gene set size (default: 500)}
+
+\item{pvalueCutoff}{P-value cutoff for significance (default: 1)}
+
+\item{eps}{Minimum p-value cutoff (default: 0)}
+
+\item{pAdjustMethod}{Method for p-value adjustment (default: "BH")}
 }
 \value{
 List containing gseaResult object
@@ -23,6 +43,6 @@ Performs GSEA using a ranked gene list
 }
 \examples{
 \dontrun{
-gsea_result <- run_gsea(ranked_genes, msigdb_terms)
+gsea_result <- run_gsea(42, ranked_genes, msigdb_terms)
 }
 }

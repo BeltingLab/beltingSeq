@@ -4,7 +4,7 @@
 \alias{plot_ora_bar}
 \title{Create two-panel barplot for ORA results}
 \usage{
-plot_ora_bar(list, name, n = 10, terms = c("terms", "pathways"))
+plot_ora_bar(list, name, n = 10, legend, terms = c("terms", "pathways"))
 }
 \arguments{
 \item{list}{List containing ORA results with "Signif. up-regulated" and "Signif. down-regulated" elements}
@@ -12,6 +12,8 @@ plot_ora_bar(list, name, n = 10, terms = c("terms", "pathways"))
 \item{name}{Character string for the plot title}
 
 \item{n}{Number of top pathways to display (default: 10)}
+
+\item{legend}{Character string for the legend title}
 
 \item{terms}{Character, either "terms" for GO/HALLMARK or "pathways" for REACTOME/KEGG (default: "terms")}
 }
@@ -28,6 +30,7 @@ plot <- plot_ora_bar(
   list = ora_results,
   name = "Comparison_Name",
   n = 10,
+  legend = "3D",
   terms = "terms"
 )
 }

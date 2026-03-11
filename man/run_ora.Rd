@@ -4,7 +4,17 @@
 \alias{run_ora}
 \title{Over-representation analysis}
 \usage{
-run_ora(.interest, .background, .pathways)
+run_ora(
+  .interest,
+  .background,
+  .pathways,
+  species = c("human", "mouse"),
+  minGSSize = 10,
+  maxGSSize = 500,
+  pvalueCutoff = 1,
+  qvalueCutoff = 1,
+  pAdjustMethod = "BH"
+)
 }
 \arguments{
 \item{.interest}{Named vector of genes of interest (with Entrez IDs as names)}
@@ -12,6 +22,18 @@ run_ora(.interest, .background, .pathways)
 \item{.background}{Named vector of background genes (with Entrez IDs as names)}
 
 \item{.pathways}{Data frame with pathway information (gs_name and human_entrez_gene columns)}
+
+\item{species}{Species for gene annotation ("human" or "mouse")}
+
+\item{minGSSize}{Minimum gene set size (default: 10)}
+
+\item{maxGSSize}{Maximum gene set size (default: 500)}
+
+\item{pvalueCutoff}{P-value cutoff for significance (default: 1)}
+
+\item{qvalueCutoff}{Q-value cutoff for significance (default: 1)}
+
+\item{pAdjustMethod}{Method for p-value adjustment (default: "BH")}
 }
 \value{
 List containing enrichResult object

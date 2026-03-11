@@ -43,6 +43,12 @@ get_genelist <- function(.df, .filter, .value, .name){
 #' @param .interest Named vector of genes of interest (with Entrez IDs as names)
 #' @param .background Named vector of background genes (with Entrez IDs as names)
 #' @param .pathways Data frame with pathway information (gs_name and human_entrez_gene columns)
+#' @param species Species for gene annotation ("human" or "mouse")
+#' @param minGSSize Minimum gene set size (default: 10)
+#' @param maxGSSize Maximum gene set size (default: 500)
+#' @param pvalueCutoff P-value cutoff for significance (default: 1)
+#' @param qvalueCutoff Q-value cutoff for significance (default: 1)
+#' @param pAdjustMethod Method for p-value adjustment (default: "BH")
 #'
 #' @return List containing enrichResult object
 #' @export
@@ -53,20 +59,24 @@ get_genelist <- function(.df, .filter, .value, .name){
 #' \dontrun{
 #' ora_result <- run_ora(interest_genes, background_genes, pathways)
 #' }
-run_ora <- function(.interest, .background, .pathways){
+run_ora <- function(.interest, .background, .pathways, species = c("human", "mouse"),
+                    minGSSize = 10, maxGSSize = 500, pvalueCutoff = 1, qvalueCutoff = 1, pAdjustMethod = "BH"){
+
   ora <- clusterProfiler::enricher(
     gene = names(.interest), # Gene set of interest
-    pvalueCutoff = 1,
-    qvalueCutoff = 1,
-    pAdjustMethod = "BH",
+    minGSSize = minGSSize, # Minimum size of the gene set
+    maxGSSize = maxGSSize, # Maximum size of the gene set
+    pvalueCutoff = pvalueCutoff, # P-value cutoff
+    qvalueCutoff = qvalueCutoff, # Q-value cutoff
+    pAdjustMethod = pAdjustMethod, # P-value adjustment method
     universe = names(.background), # Background gene set
-    TERM2GENE = dplyr::select(
-      .pathways,
-      gs_name,
-      human_entrez_gene
-    )
+    TERM2GENE = dplyr::select(.pathways, gs_name, ncbi_gene) # Data frame with pathway annotations (gs_name and gene column)
   )
-  ora <- clusterProfiler::setReadable(ora, org.Hs.eg.db::org.Hs.eg.db, keyType = "ENTREZID")
+  if (species == "mouse") {
+    ora <- clusterProfiler::setReadable(ora, org.Mm.eg.db::org.Mm.eg.db, keyType = "ENTREZID")
+  } else {
+    ora <- clusterProfiler::setReadable(ora, org.Hs.eg.db::org.Hs.eg.db, keyType = "ENTREZID")
+  }
   return(list("ora" = ora))
 }
 
@@ -77,6 +87,7 @@ run_ora <- function(.interest, .background, .pathways){
 #'
 #' @param .ora enrichResult object from clusterProfiler
 #' @param .db Database with pathway annotations (gs_name, gs_exact_source, gs_description)
+#' @param signif_cutoff Adjusted p-value cutoff for significant results (default: 0.1)
 #'
 #' @return List with two data frames: df (all results) and sig_df (significant results, p.adjust < 0.1)
 #' @export
@@ -87,7 +98,7 @@ run_ora <- function(.interest, .background, .pathways){
 #' \dontrun{
 #' ora_formatted <- extract_ora_results(ora_result$ora, pathways_db)
 #' }
-extract_ora_results <- function(.ora, .db){
+extract_ora_results <- function(.ora, .db, signif_cutoff = 0.1){
   .db <- .db %>%
     dplyr::select(gs_name, gs_exact_source, gs_description) %>%
     dplyr::distinct()
@@ -114,9 +125,9 @@ extract_ora_results <- function(.ora, .db){
   df$Description <- .db[match(ids, .db$gs_name), ][["gs_description"]]
   df$Database <- database
   
-  # Extract significant results: adjusted p-value < 0.1
+  # Extract significant results: adjusted p-value < signif_cutoff
   sig_df <- df %>%
-    dplyr::filter(p.adjust < 0.1)
+    dplyr::filter(p.adjust < signif_cutoff)
   
   # Return data frames
   return(list("df" = df, "sig_df" = sig_df))
@@ -127,39 +138,47 @@ extract_ora_results <- function(.ora, .db){
 #'
 #' @description Performs GSEA using a ranked gene list
 #'
+#' @param .seed Random seed for reproducibility
 #' @param .geneset Named numeric vector of genes ranked by effect size (Entrez IDs as names)
 #' @param .terms Data frame with gene set information (gs_name and human_entrez_gene columns)
+#' @param species Species for gene annotation ("human" or "mouse")
 #' @param minGSSize Minimum gene set size (default: 10)
 #' @param maxGSSize Maximum gene set size (default: 500)
+#' @param pvalueCutoff P-value cutoff for significance (default: 1)
+#' @param eps Minimum p-value cutoff (default: 0)
+#' @param pAdjustMethod Method for p-value adjustment (default: "BH")
 #'
 #' @return List containing gseaResult object
 #' @export
 #'
 #' @importFrom clusterProfiler GSEA setReadable
 #' @importFrom dplyr select
+#' @importFrom org.Hs.eg.db org.Hs.eg.db
+#' @importFrom org.Mm.eg.db org.Mm.eg.db
 #' @examples
 #' \dontrun{
-#' gsea_result <- run_gsea(ranked_genes, msigdb_terms)
+#' gsea_result <- run_gsea(42, ranked_genes, msigdb_terms)
 #' }
-run_gsea <- function(.geneset, .terms, minGSSize = 10, maxGSSize = 500){
-  set.seed(42)
+run_gsea <- function(.seed, .geneset, .terms, species = c("human", "mouse"),
+                     minGSSize = 10, maxGSSize = 500, pvalueCutoff = 1, eps = 0, pAdjustMethod = "BH"){
+  set.seed(.seed)
   ## Run the GSEA analysis
   res <- clusterProfiler::GSEA(
     geneList = .geneset, # Gene set of interest (ordered on effect size)
     minGSSize = minGSSize, # Minimum size of the gene set
     maxGSSize = maxGSSize, # Maximum size of the gene set
-    pvalueCutoff = 1, # Adjusted p-value cutoff
-    eps = 0, # P-value cutoff (minimum)
+    pvalueCutoff = pvalueCutoff, # Adjusted p-value cutoff
+    eps = eps, # P-value cutoff (minimum)
     seed = TRUE, # Seed for reproducibility
-    pAdjustMethod = "BH", # P-value adjustment method
-    TERM2GENE = dplyr::select(
-      .terms,
-      gs_name,
-      human_entrez_gene
-    )
+    pAdjustMethod = pAdjustMethod, # P-value adjustment method
+    TERM2GENE = dplyr::select(.terms, gs_name, ncbi_gene) # Data frame with pathway annotations (gs_name and gene column)
   )
-  res <- clusterProfiler::setReadable(res, org.Hs.eg.db::org.Hs.eg.db, keyType = "ENTREZID")
-  
+  # Make results human-readable
+  if (species == "mouse") {
+    res <- clusterProfiler::setReadable(res, org.Mm.eg.db::org.Mm.eg.db, keyType = "ENTREZID")
+  } else {
+    res <- clusterProfiler::setReadable(res, org.Hs.eg.db::org.Hs.eg.db, keyType = "ENTREZID")
+  }
   # Extract data frame
   return(list("gsea" = res))
 }
@@ -170,7 +189,7 @@ run_gsea <- function(.geneset, .terms, minGSSize = 10, maxGSSize = 500){
 #' @description Extracts results from GSEA object and formats with pathway IDs and descriptions
 #'
 #' @param .gsea gseaResult object from clusterProfiler
-#' @param .db Database with pathway annotations (gs_name, gs_exact_source, gs_description, gs_subcat)
+#' @param .db Database with pathway annotations (gs_name, gs_exact_source, gs_description, gs_subcollection)
 #'
 #' @return List with two data frames: df (all results) and sig_df (significant results, p.adjust < 0.1)
 #' @export
@@ -181,9 +200,9 @@ run_gsea <- function(.geneset, .terms, minGSSize = 10, maxGSSize = 500){
 #' \dontrun{
 #' gsea_formatted <- extract_gsea_results(gsea_result$gsea, terms_db)
 #' }
-extract_gsea_results <- function(.gsea, .db){
+extract_gsea_results <- function(.gsea, .db, signif_cutoff = 0.1){
   .db <- .db %>%
-    dplyr::select(gs_name, gs_exact_source, gs_description, gs_subcat) %>%
+    dplyr::select(gs_name, gs_exact_source, gs_description, gs_subcollection) %>%
     dplyr::distinct()
   
   # Extract data frames
@@ -209,11 +228,11 @@ extract_gsea_results <- function(.gsea, .db){
   ids <- df$ID
   df$ID <- .db[match(ids, .db$gs_name), ][["gs_exact_source"]]
   df$Description <- .db[match(ids, .db$gs_name), ][["gs_description"]]
-  df$Database <- .db[match(ids, .db$gs_name), ][["gs_subcat"]]
+  df$Database <- .db[match(ids, .db$gs_name), ][["gs_subcollection"]]
   
-  # Extract significant results: adjusted p-value < 0.1
+  # Extract significant results: adjusted p-value < signif_cutoff
   sig_df <- df %>%
-    dplyr::filter(p.adjust < 0.1)
+    dplyr::filter(p.adjust < signif_cutoff)
   
   # Return data frames
   return(list("df" = df, "sig_df" = sig_df))
