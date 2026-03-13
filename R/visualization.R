@@ -721,21 +721,18 @@ plot_venn <- function(sets, names,
 #' )
 #' }
 plot_ora_bar <- function(list, name, n = 10, legend, terms = c("terms", "pathways")) {
-  filter <- ifelse(terms == "terms", "GOBP|HALLMARK|_", "REACTOME|KEGG|_")
   
-  df_up <- as.data.frame(list[["Signif. up-regulated"]][["ora"]]) %>%
+  df_up <- list[["Signif. up-regulated"]][["sig_df"]] %>%
     dplyr::slice_head(n = n) %>% 
-    dplyr::mutate(ID = stringr::str_trim(stringr::str_replace_all(ID, !!filter, " "))) %>% 
-    dplyr::mutate(ID = reorder(ID, FoldEnrichment))
+    dplyr::mutate(Description = reorder(Description, FoldEnrichment))
   
-  df_down <- as.data.frame(list[["Signif. down-regulated"]][["ora"]]) %>%
+  df_down <- list[["Signif. down-regulated"]][["sig_df"]] %>%
     dplyr::slice_head(n = n) %>% 
-    dplyr::mutate(ID = stringr::str_trim(stringr::str_replace_all(ID, !!filter, " "))) %>% 
-    dplyr::mutate(ID = reorder(ID, -FoldEnrichment))
+    dplyr::mutate(Description = reorder(Description, -FoldEnrichment))
   
   p1 <- ggplot2::ggplot(df_up,
-               ggplot2::aes(x = ID,
-                   y = FoldEnrichment, fill = p.adjust)) +
+               ggplot2::aes(x = Description,
+                            y = FoldEnrichment, fill = p.adjust)) +
     ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge()) +
     ggplot2::scale_fill_continuous(palette =  c("#DE2D26", "#FC9272")) +
     ggplot2::coord_flip() +
@@ -749,8 +746,8 @@ plot_ora_bar <- function(list, name, n = 10, legend, terms = c("terms", "pathway
           legend.background = ggplot2::element_rect(fill = NA))
   
   p2 <- ggplot2::ggplot(df_down,
-               ggplot2::aes(x = ID,
-                   y = FoldEnrichment, fill = p.adjust)) +
+               ggplot2::aes(x = Description,
+                            y = FoldEnrichment, fill = p.adjust)) +
     ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge()) +
     ggplot2::scale_fill_continuous(palette =  c("#3182BD", "#9ECAE1")) +
     ggplot2::scale_y_reverse() +
