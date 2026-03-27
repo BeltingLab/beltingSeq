@@ -163,13 +163,11 @@ switch_alias <- function(dbconn, ID){
 }
 
 
-#' Remove duplicate gene symbols
+#' Remove duplicate probes
 #'
-#' @description Removes duplicate gene symbols from data frame, keeping the probe
-#' with the highest absolute value in the specified column (typically log2FC or t-statistic)
+#' @description Removes duplicate probes, keeping the one with the highest variance across samples
 #'
 #' @param .data Data frame containing gene expression data
-#' @param .column Column name to use for selecting best probe (e.g., "log2FoldChange", "t")
 #' @param .symbol Column name containing gene symbols
 #'
 #' @return Data frame with duplicates removed
@@ -178,12 +176,15 @@ switch_alias <- function(dbconn, ID){
 #' @examples
 #' \dontrun{
 #' # Remove duplicates based on log2 fold change
-#' unique_genes <- remove_duplicates(expr_data, "log2FoldChange", "SYMBOL")
+#' unique_genes <- remove_duplicates(normalized_data, "SYMBOL")
 #' }
-remove_duplicates <- function(.data, .column, .symbol){
-  # Sort the data frame based on the specified values
-  data <- .data[order(abs(.data[[.column]]), decreasing = TRUE), ]
-  # Remove duplicates
+remove_duplicates <- function (.data, .symbol) 
+{
+  # select numeric columns
+  nums <- unlist(lapply(.data, is.numeric), use.names = FALSE)
+  # order duplicated probes by decreasing between sample variance
+  data <- .data[order(rowVars(as.matrix(.data[, nums, drop = F])), decreasing = T), ] 
+  # remove duplicated probes, keeping the one with the highest variance
   data <- data[!duplicated(data[[.symbol]]), ]
   return(data)
 }

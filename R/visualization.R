@@ -768,3 +768,143 @@ plot_ora_bar <- function(list, name, n = 10, legend, terms = c("terms", "pathway
   grid <- cowplot::plot_grid(title_gg, gridded, ncol = 1, rel_heights = c(0.1, 1))
   return(grid)
 }
+
+
+#' Create batch effect visualization with boxplot and PCA
+#'
+#' @description Generates a two-panel plot for quality control and batch effect visualization.
+#' The top panel shows a boxplot of sample intensities grouped by condition, and the bottom
+#' panel shows a PCA plot colored by condition and shaped by batch variable.
+#'
+#' @param .matrix Data frame with gene expression data. First column should be SYMBOL,
+#'   remaining columns are samples (column names must match .coldata$sample)
+#' @param .coldata Data frame with sample metadata. Must contain a "sample" column with
+#'   values matching the column names of .matrix (excluding SYMBOL column)
+#' @param .condition Character string specifying the column name in .coldata for the
+#'   condition of interest (used for coloring and grouping)
+#' @param .batch Character string specifying the column name in .coldata for the
+#'   batch or confounding variable (used for PCA shapes). Optional if .coldata has a "labels" column
+#' @param title Character string for plot titles
+#'
+#' @return Combined ggplot object with boxplot and PCA arranged vertically
+#' @export
+#'
+#' @importFrom tidyr pivot_longer
+#' @importFrom dplyr select
+#' @importFrom ggplot2 ggplot aes geom_jitter geom_boxplot scale_fill_viridis_d
+#'   scale_color_viridis_d scale_shape_manual theme_bw labs theme element_text element_blank
+#' @importFrom ggpubr ggarrange get_legend
+#' @importFrom stats prcomp
+#' @examples
+#' \dontrun{
+#' # Create sample data
+#' expr_matrix <- data.frame(
+#'   SYMBOL = paste0("Gene", 1:100),
+#'   Sample1 = rnorm(100, 10, 2),
+#'   Sample2 = rnorm(100, 10, 2),
+#'   Sample3 = rnorm(100, 12, 2),
+#'   Sample4 = rnorm(100, 12, 2)
+#' )
+#' coldata <- data.frame(
+#'   sample = c("Sample1", "Sample2", "Sample3", "Sample4"),
+#'   condition = c("Control", "Control", "Treatment", "Treatment"),
+#'   batch = c("Batch1", "Batch2", "Batch1", "Batch2"),
+#'   labels = c("C_B1", "C_B2", "T_B1", "T_B2")
+#' )
+#' plot <- plot_batch(expr_matrix, coldata, "condition", "batch", "Normalized Data")
+#' }
+plot_batch <- function(.matrix, .coldata, .condition, .batch = NULL, title) {
+  # Validate that .matrix has a SYMBOL column (or a character first column)
+  if (!"SYMBOL" %in% colnames(.matrix) && !is.character(.matrix[[1]])) {
+    stop("'.matrix' must contain a 'SYMBOL' column or have a character first column")
+  }
+  symbol_col <- if ("SYMBOL" %in% colnames(.matrix)) "SYMBOL" else colnames(.matrix)[1] 
+
+  # Validate that .coldata has a sample column
+  if (!"sample" %in% colnames(.coldata)) {
+    stop("'.coldata' must contain a 'sample' column")
+  }
+  
+  # Validate that sample names match matrix column names
+  matrix_samples <- setdiff(colnames(.matrix), symbol_col)
+  if (!all(matrix_samples %in% .coldata$sample)) {
+    stop("All column names in '.matrix' (except column containing gene symbols) must be present in '.coldata$sample'")
+  }
+  
+  # Validate that condition column exists
+  if (!.condition %in% colnames(.coldata)) {
+    stop(paste0("Column '", .condition, "' not found in .coldata"))
+  }
+  
+  # Handle batch variable
+  if (!is.null(.batch) && !.batch %in% colnames(.coldata)) {
+    stop(paste0("Column '", .batch, "' not found in .coldata"))
+  }
+  
+  # Create labels column if it doesn't exist
+  if (!"labels" %in% colnames(.coldata)) {
+    if (!is.null(.batch)) {
+      .coldata$labels <- paste(.coldata[[.condition]], .coldata[[.batch]], sep = "_")
+    } else {
+      .coldata$labels <- .coldata[[.condition]]
+    }
+  }
+  
+  # Prepare long format data
+  mat_long <- .matrix %>%
+    tidyr::pivot_longer(cols = -all_of(symbol_col), names_to = "sample", values_to = "intensity")
+  mat_long$condition <- .coldata[[.condition]][match(mat_long$sample, .coldata$sample)]
+  mat_long$labels <- .coldata$labels[match(mat_long$sample, .coldata$sample)]
+  
+  if (!is.null(.batch)) {
+    mat_long$batch <- .coldata[[.batch]][match(mat_long$sample, .coldata$sample)]
+  }
+  
+  # Box plot with sample-wise intensities
+  plot_a <- ggplot2::ggplot(mat_long, ggplot2::aes(x = labels, y = intensity, fill = condition)) +
+    ggplot2::geom_jitter(width = 0.2, alpha = 0.2, color = "grey", fill = "transparent") +
+    ggplot2::geom_boxplot(outlier.shape = NA) +
+    ggplot2::scale_fill_viridis_d(option = "plasma", begin = 0.2, end = 0.8) +
+    ggplot2::theme_bw() +
+    ggplot2::labs(x = "", y = "Intensity", title = paste("Boxplot of", title, "by Sample")) +
+    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1), 
+                   legend.title = ggplot2::element_blank())
+  
+  # PCA plot
+  pca_data <- .matrix %>% dplyr::select(-all_of(symbol_col)) %>% t()
+  pca_res <- stats::prcomp(pca_data, scale. = TRUE)
+  pca_df <- data.frame(PC1 = pca_res$x[, 1],
+                       PC2 = pca_res$x[, 2], 
+                       sample = rownames(pca_res$x))
+  pca_df$condition <- .coldata[[.condition]][match(pca_df$sample, .coldata$sample)]
+  
+  if (!is.null(.batch)) {
+    pca_df$batch <- .coldata[[.batch]][match(pca_df$sample, .coldata$sample)]
+    n_shapes <- length(unique(pca_df$batch))
+    shape_values <- c(16, 17, 15, 18, 8, 3, 4, 7, 9, 10)[1:n_shapes]
+    
+    plot_b <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2, color = condition, shape = batch)) +
+      ggplot2::geom_point(size = 3) +
+      ggplot2::scale_color_viridis_d(option = "plasma", begin = 0.2, end = 0.8) +
+      ggplot2::scale_shape_manual(values = shape_values) +
+      ggplot2::theme_bw() +
+      ggplot2::labs(x = paste0("PC1 (", round(summary(pca_res)$importance[2, 1] * 100, 1), "%)"),
+                    y = paste0("PC2 (", round(summary(pca_res)$importance[2, 2] * 100, 1), "%)"),
+                    title = paste("PCA of", title)) + 
+      ggplot2::theme(legend.title = ggplot2::element_blank())
+  } else {
+    plot_b <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2, color = condition)) +
+      ggplot2::geom_point(size = 3) +
+      ggplot2::scale_color_viridis_d(option = "plasma", begin = 0.2, end = 0.8) +
+      ggplot2::theme_bw() +
+      ggplot2::labs(x = paste0("PC1 (", round(summary(pca_res)$importance[2, 1] * 100, 1), "%)"),
+                    y = paste0("PC2 (", round(summary(pca_res)$importance[2, 2] * 100, 1), "%)"),
+                    title = paste("PCA of", title)) + 
+      ggplot2::theme(legend.title = ggplot2::element_blank())
+  }
+  
+  # Combine plots with shared legend
+  ggpubr::ggarrange(plot_a, plot_b, ncol = 1, nrow = 2, heights = c(1, .5), 
+                    common.legend = TRUE, legend = "right", 
+                    legend.grob = ggpubr::get_legend(plot_b))
+}
