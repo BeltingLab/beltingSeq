@@ -2,14 +2,12 @@
 % Please edit documentation in R/processing.R
 \name{remove_duplicates}
 \alias{remove_duplicates}
-\title{Remove duplicate gene symbols}
+\title{Remove duplicate probes}
 \usage{
-remove_duplicates(.data, .column, .symbol)
+remove_duplicates(.data, .symbol)
 }
 \arguments{
 \item{.data}{Data frame containing gene expression data}
-
-\item{.column}{Column name to use for selecting best probe (e.g., "log2FoldChange", "t")}
 
 \item{.symbol}{Column name containing gene symbols}
 }
@@ -17,12 +15,11 @@ remove_duplicates(.data, .column, .symbol)
 Data frame with duplicates removed
 }
 \description{
-Removes duplicate gene symbols from data frame, keeping the probe
-with the highest absolute value in the specified column (typically log2FC or t-statistic)
+Removes duplicate probes, keeping the one with the highest variance across samples
 }
 \examples{
 \dontrun{
 # Remove duplicates based on log2 fold change
-unique_genes <- remove_duplicates(expr_data, "log2FoldChange", "SYMBOL")
+unique_genes <- remove_duplicates(normalized_data, "SYMBOL")
 }
 }
