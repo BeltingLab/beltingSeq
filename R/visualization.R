@@ -908,3 +908,152 @@ plot_batch <- function(.matrix, .coldata, .condition, .batch = NULL, title) {
                     common.legend = TRUE, legend = "right", 
                     legend.grob = ggpubr::get_legend(plot_b))
 }
+
+
+
+#' Visualize and filter missing values in expression data
+#'
+#' @description Generates diagnostic plots for missing value patterns and their relationship
+#' with intensity levels. Creates a scatter plot showing missingness ratio vs average intensity,
+#' a heatmap of missing value patterns across, and a summary table with missingness statistics of
+#' samples. Also filters out genes/proteins with excessive missing values.
+#'
+#' @param .matrix Data frame or matrix with gene expression data. Row names should be gene
+#'   identifiers, columns are samples (column names must match .coldata$sample)
+#' @param .coldata Data frame with sample metadata. Must contain a "sample" column with
+#'   values matching the column names of .matrix
+#' @param title Character string for plot titles
+#' @param threshold Numeric value between 0 and 1 for maximum allowed missing value ratio
+#'   per gene/protein (default: 0.5, meaning features with >50% missing values are filtered out)
+#' @param type Character string specifying feature type, either "gene" or "protein" 
+#'   (default: "gene"). Used for labeling in summary statistics.
+#'
+#' @return List with three elements:
+#'   \item{plot}{Combined ggplot object with scatter plot (including embedded summary table) and heatmap}
+#'   \item{filtered_matrix}{Filtered matrix with features below missing value threshold}
+#'   \item{summary}{Data frame with missingness statistics}
+#' @export
+#'
+#' @importFrom ggplot2 ggplot aes geom_point geom_smooth labs theme_minimal 
+#'   scale_color_viridis_c annotation_custom theme element_text
+#' @importFrom ggpubr ggarrange
+#' @importFrom pheatmap pheatmap
+#' @importFrom grDevices colorRampPalette
+#' @importFrom gridExtra tableGrob ttheme_minimal
+#' @examples
+#' \dontrun{
+#' # Create sample data with missing values
+#' expr_matrix <- matrix(rnorm(500), nrow = 100, ncol = 5,
+#'                       dimnames = list(paste0("Gene", 1:100),
+#'                                       paste0("Sample", 1:5)))
+#' expr_matrix[sample(500, 50)] <- NA  # Add some missing values
+#' coldata <- data.frame(sample = paste0("Sample", 1:5),
+#'                       condition = rep(c("Control", "Treatment"), c(2, 3)))
+#' 
+#' # For gene expression data
+#' result <- plot_missing(expr_matrix, coldata, "Raw Data", 
+#'                        threshold = 0.5, type = "gene")
+#' 
+#' # For protein expression data
+#' result <- plot_missing(protein_matrix, coldata, "Proteomics", 
+#'                        threshold = 0.5, type = "protein")
+#' 
+#' print(result$plot)
+#' print(result$summary)
+#' }
+# function plot and filter missing values
+plot_missing <- function(.matrix, .coldata, title, threshold = 0.5, type = c("gene","protein")) {
+  # Validate inputs
+  if (!"sample" %in% colnames(.coldata)) {
+    stop("'.coldata' must contain a 'sample' column")
+  }
+  
+  if (!all(colnames(.matrix) %in% .coldata$sample)) {
+    stop("All column names in '.matrix' must be present in '.coldata$sample'")
+  }
+  
+  if (threshold < 0 || threshold > 1) {
+    stop("'threshold' must be between 0 and 1")
+  }
+  label <- ifelse(type == "gene", "Genes", "Proteins")
+  # Binary matrix indicating missing values
+  missing_mat <- matrix(as.numeric(is.na(.matrix)), nrow = nrow(.matrix),
+                        dimnames = list(row.names(.matrix), colnames(.matrix)))
+  
+  # Calculate missingness ratio vs average intensity per gene
+  log2_vs_MV <- data.frame(
+    row.names = row.names(.matrix),
+    avgIntensity = rowMeans(.matrix, na.rm = TRUE),
+    ratioMV = apply(.matrix, 1, function(x) sum(is.na(x))) / ncol(.matrix)
+  )
+  
+  # Create summary statistics
+  summary_stats <- data.frame(
+    Metric = c(paste("Total", label), "Total samples", "Total values", "Missing values",
+               "Missing value rate (%)", paste(label, "with any missing"),
+               paste0(label, " with >", threshold * 100, "% missing"),
+               paste0(label, " retained (<", threshold * 100, "% missing)")),
+    Value = c(
+      nrow(.matrix),
+      ncol(.matrix),
+      nrow(.matrix) * ncol(.matrix),
+      sum(is.na(.matrix)),
+      round(sum(is.na(.matrix)) / (nrow(.matrix) * ncol(.matrix)) * 100, 2),
+      sum(log2_vs_MV$ratioMV > 0),
+      sum(log2_vs_MV$ratioMV > threshold),
+      sum(log2_vs_MV$ratioMV < threshold)
+    )
+  )
+  
+  # Create custom color palette matching viridis theme
+  mv_colors <- grDevices::colorRampPalette(c("cornsilk", "darkred"))(2)
+  
+  # Scatter plot: missing values ratio vs intensity
+  p1_A <- ggplot2::ggplot(log2_vs_MV, ggplot2::aes(x = avgIntensity, y = ratioMV)) +
+    ggplot2::geom_point(size = 2.5, color = mv_colors[2], alpha = 0.6) +
+    ggplot2::geom_smooth(method = "loess", color = "black", se = FALSE, linewidth = 1) +
+    ggplot2::scale_color_viridis_c(option = "plasma", begin = 0.1, end = 0.9, 
+                                   name = "MV ratio") +
+    ggplot2::labs(
+      x = "Average intensity (log2)",
+      y = "Ratio of missing values",
+      title = paste0(title, ": MV ratio vs intensity")
+    ) +
+    ggplot2::theme_minimal(base_size = 10) +
+    ggplot2::theme(legend.position = "right", title = ggplot2::element_text(hjust = 0.5, face = "bold"))
+  
+  # Heatmap of missing values pattern
+  
+  p1_B <- pheatmap::pheatmap(
+    missing_mat,
+    cluster_rows = TRUE, treeheight_row = 0,
+    cluster_cols = TRUE, treeheight_col = 0,
+    color = mv_colors,
+    main = paste0(title, ": Missing values patterns"), 
+    fontsize = 10,
+    show_rownames = FALSE, 
+    labels_col = .coldata$sample[match(colnames(missing_mat), .coldata$sample)],
+    legend = FALSE,
+    silent = TRUE
+  )
+  
+  # Create a table grob for the summary statistics, white cell fill and grid line
+  summary_plot <- gridExtra::tableGrob(t(summary_stats), rows = NULL, theme = gridExtra::ttheme_minimal(
+    core = list(fg_params = list(hjust = 0.5, x = 0.5), bg_params = list(fill = "white", col = "grey")),
+    colhead = list(fg_params = list(hjust = 0.5, x = 0.5), bg_params = list(fill = "white", col = "grey")),
+    rowhead = list(fg_params = list(hjust = 0.5, x = 0.5), bg_params = list(fill = "white", col = "grey"))
+  ))
+  # Combine the scatter plot (with nested table) and heatmap into a single figure
+  grid_1 <- ggpubr::ggarrange(p1_A, p1_B[[4]], ncol = 2, nrow = 1, widths = c(1, .5), align = "h") +
+    theme(plot.margin = margin(0.5,0.5,0.5,0.5, "cm")) 
+  grid <- ggpubr::ggarrange(grid_1, summary_plot, ncol = 1, nrow = 2, heights = c(1, .3), align = "v") + 
+    theme(plot.margin = margin(0.1,0.1,0.1,0.1, "cm"))
+  # Filter the matrix to keep only genes below threshold
+  filtered_matrix <- .matrix[log2_vs_MV$ratioMV < threshold, ]
+  
+  return(list(
+    plot = grid,
+    filtered_matrix = filtered_matrix,
+    summary = summary_stats
+  ))
+}
