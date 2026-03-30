@@ -931,6 +931,7 @@ plot_batch <- function(.matrix, .coldata, .condition, .batch = NULL, title) {
 #' @return List with three elements:
 #'   \item{plot}{Combined ggplot object with scatter plot (including embedded summary table) and heatmap}
 #'   \item{filtered_matrix}{Filtered matrix with features below missing value threshold}
+#'   \item{missing_matrix}{Filtered binary matrix indicating missing values for retained features}
 #'   \item{summary}{Data frame with missingness statistics}
 #' @export
 #'
@@ -1050,10 +1051,75 @@ plot_missing <- function(.matrix, .coldata, title, threshold = 0.5, type = c("ge
     theme(plot.margin = margin(0.1,0.1,0.1,0.1, "cm"))
   # Filter the matrix to keep only genes below threshold
   filtered_matrix <- .matrix[log2_vs_MV$ratioMV < threshold, ]
+  # Filter matching rows in missing matrix for heatmap
+  filtered_missing_mat <- missing_mat[log2_vs_MV$ratioMV < threshold, ]
   
   return(list(
     plot = grid,
     filtered_matrix = filtered_matrix,
+    missing_matrix = filtered_missing_mat,
     summary = summary_stats
   ))
+}
+
+#' Visualize distribution of observed vs imputed values
+#'
+#' @description Creates a histogram comparing the distribution of observed values
+#' and imputed values in expression data. Useful for quality control after imputation
+#' to ensure imputed values follow a similar distribution to observed data.
+#'
+#' @param data_imputed Matrix or data frame with imputed gene expression data
+#' @param missing_mat Binary matrix indicating missing values (0 = observed, 1 = imputed).
+#'   Must have same dimensions as data_imputed
+#' @param title Character string for plot title
+#'
+#' @return ggplot object with overlaid histograms
+#' @export
+#'
+#' @importFrom ggplot2 ggplot aes geom_histogram scale_x_continuous labs theme_bw theme element_rect
+#' @examples
+#' \dontrun{
+#' # After imputation
+#' plot <- plot_imputation(imputed_data, missing_matrix, "MinProb Imputation")
+#' }
+plot_imputation <- function(data_imputed, missing_mat, title) {
+  # Flatten matrices to vectors for plotting
+  observed_values <- as.vector(as.matrix(data_imputed)[missing_mat == 0])
+  imputed_values  <- as.vector(as.matrix(data_imputed)[missing_mat == 1])
+  
+  # Combine into one data frame
+  df_plot <- data.frame(
+    value = c(observed_values, imputed_values),
+    source = rep(c("Observed", "Imputed"),
+                 c(length(observed_values), length(imputed_values)))
+  )
+  
+  # Plot
+  plot <- ggplot2::ggplot(df_plot, ggplot2::aes(x = value, fill = source)) +
+    ggplot2::geom_histogram(
+      data = subset(df_plot, source == "Observed"),
+      ggplot2::aes(y = ggplot2::after_stat(count)),
+      binwidth = 0.2,
+      fill = "grey",
+      color = "grey60"
+    ) +
+    ggplot2::geom_histogram(
+      data = subset(df_plot, source == "Imputed"),
+      ggplot2::aes(y = ggplot2::after_stat(count)),
+      binwidth = 0.2,
+      fill = "darkred",
+      alpha = 0.7
+    ) +
+    ggplot2::scale_x_continuous(
+      name = "Expression (log2)",
+      limits = c(0, 25),
+      breaks = c(0, 5, 10, 15, 20, 25)
+    ) +
+    ggplot2::labs(title =  title) +
+    ggplot2::theme_bw(base_size = 10) +
+    ggplot2::theme(legend.position = "none",
+                  panel.background = ggplot2::element_rect(
+                    fill = "white", colour = "white",
+                    size = 0.5, linetype = "solid"))
+  return(plot)
 }
