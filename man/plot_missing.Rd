@@ -31,6 +31,7 @@ per gene/protein (default: 0.5, meaning features with >50% missing values are fi
 List with three elements:
   \item{plot}{Combined ggplot object with scatter plot (including embedded summary table) and heatmap}
   \item{filtered_matrix}{Filtered matrix with features below missing value threshold}
+  \item{missing_matrix}{Filtered binary matrix indicating missing values for retained features}
   \item{summary}{Data frame with missingness statistics}
 }
 \description{
