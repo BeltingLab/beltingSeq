@@ -50,7 +50,6 @@ Suggests:
     msgdbr,
     GSVA,
     rrvgo,
-    hacksig,
     ComplexHeatmap,
     RColorBrewer,
     openxlsx,
