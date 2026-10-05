@@ -20,6 +20,7 @@ Imports:
     oligo,
     illuminaHumanv4.db,
     org.Hs.eg.db,
+    org.Mm.eg.db,
     AnnotationDbi,
     Biobase,
     clusterProfiler,
